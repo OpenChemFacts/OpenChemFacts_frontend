@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { API_ENDPOINTS } from "@/lib/config";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface SearchBarProps {
   onCasSelect: (cas: string) => void;
@@ -20,6 +20,7 @@ interface CasItem {
 export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [errorShown, setErrorShown] = useState(false);
 
   const { data: casListResponse, error } = useQuery({
     queryKey: ["cas-list"],
@@ -47,16 +48,25 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
       
       return [];
     },
+    retry: false, // Ne pas réessayer automatiquement pour éviter les notifications répétées
   });
 
   const casList: CasItem[] = casListResponse || [];
 
-  // Afficher une notification si erreur de chargement de la liste
+  // Afficher une notification si erreur de chargement de la liste (une seule fois)
   useEffect(() => {
-    if (error) {
-      toast.error("Impossible de charger la liste des produits chimiques");
+    if (error && !errorShown) {
+      const errorMessage = error instanceof ApiError 
+        ? error.message 
+        : "Impossible de charger la liste des produits chimiques";
+      toast.error(errorMessage);
+      setErrorShown(true);
     }
-  }, [error]);
+    // Réinitialiser le flag si l'erreur disparaît (requête réussie)
+    if (!error && errorShown) {
+      setErrorShown(false);
+    }
+  }, [error, errorShown]);
 
   const filteredCas = searchTerm
     ? casList.filter((item) =>

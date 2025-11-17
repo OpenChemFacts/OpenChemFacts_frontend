@@ -1,15 +1,38 @@
 /**
  * Configuration de l'API Scalingo
- * L'URL peut être définie via la variable d'environnement VITE_API_BASE_URL
- * ou utilise l'URL par défaut selon l'environnement :
- * - Développement local : http://localhost:8000
+ * 
+ * L'URL peut être définie via la variable d'environnement VITE_API_BASE_URL.
+ * Si non définie, utilise l'URL par défaut selon l'environnement :
+ * - Développement local (DEV=true) : http://localhost:8000
  * - Production : https://openchemfacts-api.osc-fr1.scalingo.io
+ * 
+ * Pour utiliser le backend Scalingo en développement, définir dans .env :
+ * VITE_API_BASE_URL=https://openchemfacts-api.osc-fr1.scalingo.io
+ * 
+ * Pour utiliser le backend local, soit :
+ * - Ne pas définir VITE_API_BASE_URL (utilisera localhost:8000 en dev)
+ * - Ou définir VITE_API_BASE_URL=http://localhost:8000
  */
-export const API_BASE_URL = 
-  import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV 
+const getApiBaseUrl = (): string => {
+  // Si VITE_API_BASE_URL est explicitement défini, l'utiliser
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // Sinon, utiliser les valeurs par défaut selon l'environnement
+  return import.meta.env.DEV 
     ? 'http://localhost:8000' 
-    : 'https://openchemfacts-api.osc-fr1.scalingo.io');
+    : 'https://openchemfacts-api.osc-fr1.scalingo.io';
+};
+
+export const API_BASE_URL = getApiBaseUrl();
+
+// Log de débogage en développement
+if (import.meta.env.DEV) {
+  console.log(`[API Config] Base URL: ${API_BASE_URL}`);
+  console.log(`[API Config] Environment: ${import.meta.env.MODE}`);
+  console.log(`[API Config] VITE_API_BASE_URL: ${import.meta.env.VITE_API_BASE_URL || 'not set'}`);
+}
 
 export const API_ENDPOINTS = {
   ROOT: '/',
