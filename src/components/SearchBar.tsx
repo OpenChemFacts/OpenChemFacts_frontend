@@ -12,14 +12,29 @@ interface SearchBarProps {
   onCasSelect: (cas: string) => void;
 }
 
+interface CasItem {
+  cas_number: string;
+  chemical_name?: string;
+}
+
 export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const { data: casList, error } = useQuery({
+  const { data: casListResponse, error } = useQuery({
     queryKey: ["cas-list"],
-    queryFn: () => apiFetch<string[]>(API_ENDPOINTS.CAS_LIST),
+    queryFn: async () => {
+      const response = await apiFetch<any>(API_ENDPOINTS.CAS_LIST);
+      console.log("CAS List API Response:", response);
+      // Handle both array and object responses
+      if (response && typeof response === 'object' && response.cas_list) {
+        return response.cas_list as CasItem[];
+      }
+      return [];
+    },
   });
+
+  const casList: CasItem[] = casListResponse || [];
 
   // Afficher une notification si erreur de chargement de la liste
   useEffect(() => {
@@ -28,21 +43,40 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
     }
   }, [error]);
 
-  const filteredCas = casList?.filter((cas) =>
-    cas.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 10);
+  const filteredCas = searchTerm
+    ? casList.filter((item) =>
+        item.cas_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.chemical_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false)
+      ).slice(0, 10)
+    : [];
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
-      toast.error("Please enter a CAS number");
+      toast.error("Please enter a CAS number or chemical name");
       return;
     }
     
-    if (casList?.includes(searchTerm)) {
-      onCasSelect(searchTerm);
+    // Try exact CAS match first
+    const exactMatch = casList.find(item => item.cas_number === searchTerm);
+    if (exactMatch) {
+      onCasSelect(exactMatch.cas_number);
+      setShowSuggestions(false);
+      return;
+    }
+    
+    // Try case-insensitive match on CAS or name
+    const matchedItem = casList.find(item => 
+      item.cas_number.toLowerCase() === searchTerm.toLowerCase() ||
+      item.chemical_name?.toLowerCase() === searchTerm.toLowerCase()
+    );
+    
+    if (matchedItem) {
+      onCasSelect(matchedItem.cas_number);
       setShowSuggestions(false);
     } else {
-      toast.error("CAS number not found");
+      // Accept the input as-is and let API validate
+      onCasSelect(searchTerm);
+      setShowSuggestions(false);
     }
   };
 
@@ -60,7 +94,7 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
         <div className="relative flex-1">
           <Input
             type="text"
-            placeholder="Search for a CAS number (e.g., 50-00-0)..."
+            placeholder="Search by CAS number or chemical name (e.g., 42576-02-3)..."
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -77,20 +111,23 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
         </Button>
       </div>
 
-      {showSuggestions && searchTerm && filteredCas && filteredCas.length > 0 && (
-        <Card className="absolute w-full mt-2 p-2 shadow-elevated z-10">
-          {filteredCas.map((cas) => (
+      {showSuggestions && searchTerm && filteredCas.length > 0 && (
+        <Card className="absolute w-full mt-2 p-2 shadow-elevated z-10 max-h-80 overflow-y-auto">
+          {filteredCas.map((item) => (
             <button
-              key={cas}
+              key={item.cas_number}
               className="w-full text-left px-4 py-2 hover:bg-muted rounded-md transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
-                setSearchTerm(cas);
-                onCasSelect(cas);
+                setSearchTerm(item.cas_number);
+                onCasSelect(item.cas_number);
                 setShowSuggestions(false);
               }}
             >
-              {cas}
+              <div className="font-mono text-sm font-semibold">{item.cas_number}</div>
+              {item.chemical_name && (
+                <div className="text-xs text-muted-foreground">{item.chemical_name}</div>
+              )}
             </button>
           ))}
         </Card>

@@ -7,9 +7,13 @@
  */
 export const API_BASE_URL = 
   import.meta.env.VITE_API_BASE_URL || 
+<<<<<<< HEAD
   (import.meta.env.DEV 
     ? 'http://localhost:8000' 
     : 'https://openchemfacts-api.osc-fr1.scalingo.io');
+=======
+  'https://api-production-e40f.up.railway.app';
+>>>>>>> e672ce84622af95aa3197eb66a09314d1b544977
 
 export const API_ENDPOINTS = {
   ROOT: '/',
