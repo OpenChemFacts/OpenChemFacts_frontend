@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ interface PlotlyData {
 
 export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const plotRef = useRef<HTMLDivElement>(null);
+  const [plotlyLoaded, setPlotlyLoaded] = useState(false);
 
   const endpoint = type === "ssd" 
     ? API_ENDPOINTS.SSD_PLOT(cas)
@@ -33,84 +34,192 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
     enabled: !!cas,
   });
 
+  // Render Plotly chart
   useEffect(() => {
-    if (data && plotRef.current && (window as any).Plotly) {
+    if (data && plotRef.current && plotlyLoaded && (window as any).Plotly) {
       try {
+        console.log('[PlotViewer] Plotly data received:', data);
+        console.log('[PlotViewer] Number of traces:', data.data?.length);
+        console.log('[PlotViewer] Traces details:', data.data?.map((trace: any) => ({
+          name: trace.name,
+          type: trace.type,
+          mode: trace.mode,
+          x_length: trace.x?.length || trace.x?.dtype,
+          y_length: trace.y?.length || trace.y?.dtype,
+        })));
+        
         // Vérifier que les données Plotly sont valides
         if (data.data && data.layout) {
-          // Améliorer le layout pour éviter les chevauchements
+          // Nettoyer le graphique existant avant d'en créer un nouveau
+          if (plotRef.current) {
+            (window as any).Plotly.purge(plotRef.current);
+          }
+
+          // Préserver 100% des éléments du layout original
+          // Fusionner intelligemment les améliorations sans écraser les éléments existants
+          
+          // D'abord, préserver tous les axes secondaires (xaxis2, yaxis2, xaxis3, etc.)
+          // avec amélioration de automargin seulement si absent
+          const secondaryAxes = Object.keys(data.layout)
+            .filter(key => /^(x|y)axis\d+$/.test(key))
+            .reduce((acc, key) => {
+              acc[key] = {
+                ...data.layout[key], // Préserver toutes les valeurs originales
+                automargin: data.layout[key]?.automargin ?? true, // Ajouter automargin seulement si absent
+              };
+              return acc;
+            }, {} as any);
+          
+          // Construire le layout amélioré en préservant TOUS les éléments originaux
           const enhancedLayout = {
+            // D'abord, préserver TOUS les éléments du layout original
             ...data.layout,
-            autosize: true,
+            
+            // Améliorations pour l'affichage (fusionnées avec les valeurs existantes)
+            autosize: data.layout.autosize ?? true,
+            showlegend: data.layout.showlegend !== false, // Préserver la valeur originale si définie
+            
+            // Marges : fusionner intelligemment (préserver les valeurs originales, ajouter des défauts si manquantes)
             margin: {
               l: 80,
               r: 120,
               t: 100,
               b: 120,
-              pad: 10
+              pad: 10,
+              ...data.layout.margin, // Les valeurs originales écrasent les défauts
             },
+            
+            // Font : fusionner avec la font existante
             font: {
-              size: 12
+              size: 12,
+              ...data.layout.font, // Les valeurs originales écrasent les défauts
             },
+            
+            // Axe X principal : préserver toutes les propriétés et améliorer seulement automargin
             xaxis: {
-              ...data.layout.xaxis,
-              automargin: true,
+              ...data.layout.xaxis, // D'abord préserver toutes les valeurs originales
+              automargin: data.layout.xaxis?.automargin ?? true, // Ajouter automargin seulement si absent
             },
+            
+            // Axe Y principal : préserver toutes les propriétés et améliorer seulement automargin
             yaxis: {
-              ...data.layout.yaxis,
-              automargin: true,
+              ...data.layout.yaxis, // D'abord préserver toutes les valeurs originales
+              automargin: data.layout.yaxis?.automargin ?? true, // Ajouter automargin seulement si absent
             },
-            legend: {
-              ...data.layout.legend,
+            
+            // Ajouter les axes secondaires préservés
+            ...secondaryAxes,
+            
+            // Légende : fusionner avec la configuration existante
+            legend: data.layout.legend ? {
+              ...data.layout.legend, // D'abord préserver toutes les valeurs originales
+              // Ensuite, ajouter des valeurs par défaut seulement si elles n'existent pas
+              orientation: data.layout.legend.orientation ?? 'v',
+              x: data.layout.legend.x ?? 1.02,
+              y: data.layout.legend.y ?? 1,
+              xanchor: data.layout.legend.xanchor ?? 'left',
+              yanchor: data.layout.legend.yanchor ?? 'top',
+              visible: data.layout.legend.visible !== false,
+              font: {
+                size: 11, // Valeur par défaut
+                ...data.layout.legend.font, // Les valeurs originales écrasent les défauts
+              },
+            } : {
+              // Valeurs par défaut si aucune légende n'est définie
               orientation: 'v',
               x: 1.02,
               y: 1,
               xanchor: 'left',
               yanchor: 'top',
-              font: {
-                size: 11
-              }
-            }
+              visible: true,
+              font: { size: 11 },
+            },
           };
 
+          // Préserver 100% des traces (data) sans modification
+          // data.data contient toutes les traces (courbes, scatter, barres, etc.)
+          const allTraces = Array.isArray(data.data) ? data.data : [];
+          
+          // Configuration : fusionner avec la config originale
+          const plotConfig = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ["lasso2d", "select2d"],
+            ...(data.config || {}), // Préserver toutes les options de config originales
+          };
+
+          console.log('[PlotViewer] Rendering plot with:', {
+            tracesCount: allTraces.length,
+            layoutKeys: Object.keys(enhancedLayout),
+            hasAnnotations: !!enhancedLayout.annotations,
+            hasShapes: !!enhancedLayout.shapes,
+            hasImages: !!enhancedLayout.images,
+            secondaryAxes: Object.keys(secondaryAxes),
+          });
+
           (window as any).Plotly.newPlot(
-            plotRef.current, 
-            data.data, 
-            enhancedLayout, 
-            {
-              responsive: true,
-              displayModeBar: true,
-              displaylogo: false,
-              modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-              ...(data.config || {}),
-            }
+            plotRef.current,
+            allTraces, // Utiliser toutes les traces sans modification
+            enhancedLayout,
+            plotConfig
           );
 
-          // Ajouter un resize listener pour s'assurer que le graphique s'adapte
           const resizeHandler = () => {
             if (plotRef.current && (window as any).Plotly) {
               (window as any).Plotly.Plots.resize(plotRef.current);
             }
           };
-          window.addEventListener('resize', resizeHandler);
-          return () => window.removeEventListener('resize', resizeHandler);
+          window.addEventListener("resize", resizeHandler);
+          return () => {
+            window.removeEventListener("resize", resizeHandler);
+            // Nettoyer le graphique lors du démontage
+            if (plotRef.current && (window as any).Plotly) {
+              (window as any).Plotly.purge(plotRef.current);
+            }
+          };
         } else {
-          console.error("Invalid Plotly data structure:", data);
+          console.error("[PlotViewer] Invalid Plotly data structure:", data);
         }
       } catch (plotError) {
-        console.error("Error rendering Plotly chart:", plotError);
+        console.error("[PlotViewer] Error rendering Plotly chart:", plotError);
       }
     }
-  }, [data]);
+  }, [data, plotlyLoaded]);
 
   // Load Plotly dynamically
   useEffect(() => {
-    if (!(window as any).Plotly) {
-      const script = document.createElement("script");
-      script.src = "https://cdn.plot.ly/plotly-2.27.0.min.js";
-      script.async = true;
-      document.body.appendChild(script);
+    if ((window as any).Plotly) {
+      setPlotlyLoaded(true);
+      return;
     }
+
+    // Vérifier si le script est déjà en cours de chargement
+    const existingScript = document.querySelector('script[src="https://cdn.plot.ly/plotly-2.27.0.min.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        setPlotlyLoaded(true);
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.plot.ly/plotly-2.27.0.min.js";
+    script.async = true;
+    script.onload = () => {
+      setPlotlyLoaded(true);
+    };
+    script.onerror = () => {
+      console.error("[PlotViewer] Failed to load Plotly script");
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Nettoyer le graphique lors du démontage
+      if (plotRef.current && (window as any).Plotly) {
+        (window as any).Plotly.purge(plotRef.current);
+      }
+    };
   }, []);
 
   if (isLoading) {
@@ -147,6 +256,23 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
               <p className="text-sm text-muted-foreground">{errorMessage}</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Si les données sont chargées mais Plotly n'est pas encore prêt, afficher un skeleton
+  if (data && !plotlyLoaded) {
+    return (
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-accent" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-96 w-full" />
         </CardContent>
       </Card>
     );
