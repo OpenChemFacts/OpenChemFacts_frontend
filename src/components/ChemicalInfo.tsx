@@ -148,12 +148,10 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
             <p className="text-sm text-muted-foreground mb-1">CAS Number</p>
             <p className="font-mono font-semibold text-lg">{data?.cas_number}</p>
           </div>
-          {data?.chemical_name && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Chemical Name</p>
-              <p className="font-semibold">{data.chemical_name}</p>
-            </div>
-          )}
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Name</p>
+            <p className="font-semibold">{data?.chemical_name || "N/A"}</p>
+          </div>
         </div>
 
         {data && (
