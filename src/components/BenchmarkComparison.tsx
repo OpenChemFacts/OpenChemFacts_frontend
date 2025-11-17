@@ -19,6 +19,16 @@ interface PlotlyData {
   config?: any;
 }
 
+// Fonction pour normaliser un numéro CAS (enlever les espaces, normaliser les tirets)
+const normalizeCas = (cas: string): string => {
+  return cas.trim().replace(/\s+/g, '').replace(/[–—]/g, '-');
+};
+
+// Fonction pour comparer deux numéros CAS (insensible à la casse et aux espaces)
+const compareCas = (cas1: string, cas2: string): boolean => {
+  return normalizeCas(cas1).toLowerCase() === normalizeCas(cas2).toLowerCase();
+};
+
 // Fonction pour décoder les données numpy/base64 en tableaux JavaScript
 const decodeNumpyData = (data: any): any[] => {
   if (!data || typeof data !== 'object') return data;
@@ -76,20 +86,22 @@ export const BenchmarkComparison = () => {
       if (!response.ok) throw new Error("Failed to fetch CAS list");
       const data = await response.json();
       
-      if (data?.cas_with_names) {
-        if (Array.isArray(data.cas_with_names)) {
-          return data.cas_with_names as CasItem[];
-        } else {
-          return Object.entries(data.cas_with_names as Record<string, string>).map(
-            ([cas_number, chemical_name]) => ({ cas_number, chemical_name })
-          );
-        }
-      }
-      return [];
+      // Retourner les données brutes pour permettre l'accès aux deux formats
+      return data;
     },
   });
 
-  const casList: CasItem[] = casListResponse || [];
+  // Convertir les données en format array pour faciliter l'utilisation
+  const casList: CasItem[] = casListResponse?.cas_with_names
+    ? Array.isArray(casListResponse.cas_with_names)
+      ? casListResponse.cas_with_names.map((item: any) => ({
+          cas_number: item.cas_number || item,
+          chemical_name: item.chemical_name,
+        }))
+      : Object.entries(casListResponse.cas_with_names as Record<string, string>).map(
+          ([cas_number, chemical_name]) => ({ cas_number, chemical_name })
+        )
+    : [];
 
   // Fetch comparison plot when we have 2-3 substances selected
   const { data: plotData, isLoading, error } = useQuery({
@@ -311,12 +323,17 @@ export const BenchmarkComparison = () => {
     const term = searchTerms[index];
     if (!term) return [];
     
+    const normalizedTerm = normalizeCas(term).toLowerCase();
+    
     return casList
       .filter((item) => {
+        const normalizedCas = normalizeCas(item.cas_number).toLowerCase();
+        const normalizedName = item.chemical_name?.toLowerCase() || '';
         const matchesTerm = 
-          item.cas_number.toLowerCase().includes(term.toLowerCase()) ||
-          item.chemical_name?.toLowerCase().includes(term.toLowerCase());
-        const notAlreadySelected = !selectedCas.includes(item.cas_number);
+          normalizedCas.includes(normalizedTerm) ||
+          normalizedName.includes(normalizedTerm);
+        // Vérifier que le CAS n'est pas déjà sélectionné (avec normalisation)
+        const notAlreadySelected = !selectedCas.some(selected => compareCas(selected, item.cas_number));
         return matchesTerm && notAlreadySelected;
       })
       .slice(0, 10);
@@ -340,9 +357,45 @@ export const BenchmarkComparison = () => {
     setSelectedCas(selectedCas.filter((c) => c !== cas));
   };
 
-  const getChemicalName = (cas: string) => {
-    const item = casList.find((item) => item.cas_number === cas);
-    return item?.chemical_name || cas;
+  const getChemicalName = (cas: string): string => {
+    if (!cas) return '';
+    
+    const normalizedCas = normalizeCas(cas);
+    
+    // Recherche exacte avec normalisation
+    let item = casList.find((item) => compareCas(item.cas_number, normalizedCas));
+    
+    if (item?.chemical_name) {
+      return item.chemical_name;
+    }
+    
+    // Si pas trouvé dans la liste locale, essayer de récupérer depuis la réponse brute
+    // (pour les cas où la liste n'est pas encore chargée ou le format diffère)
+    if (casListResponse && typeof casListResponse === 'object' && 'cas_with_names' in casListResponse) {
+      const casWithNames = casListResponse.cas_with_names;
+      
+      if (Array.isArray(casWithNames)) {
+        // Format array
+        const found = casWithNames.find((item: any) => 
+          compareCas(item.cas_number || item, normalizedCas)
+        );
+        if (found?.chemical_name) {
+          return found.chemical_name;
+        }
+      } else if (typeof casWithNames === 'object') {
+        // Format object {cas_number: chemical_name}
+        const casWithNamesObj = casWithNames as Record<string, string>;
+        const matchingKey = Object.keys(casWithNamesObj).find(key => 
+          compareCas(key, normalizedCas)
+        );
+        if (matchingKey && casWithNamesObj[matchingKey]) {
+          return casWithNamesObj[matchingKey];
+        }
+      }
+    }
+    
+    // Fallback : retourner le CAS normalisé si aucun nom n'est trouvé
+    return normalizedCas;
   };
 
   return (
