@@ -24,12 +24,27 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const { data: casListResponse, error } = useQuery({
     queryKey: ["cas-list"],
     queryFn: async () => {
-      const response = await apiFetch<any>(API_ENDPOINTS.CAS_LIST);
-      console.log("CAS List API Response:", response);
-      // Handle both array and object responses
-      if (response && typeof response === 'object' && response.cas_list) {
-        return response.cas_list as CasItem[];
+      const response = await apiFetch<{
+        count: number;
+        cas_numbers: string[];
+        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+      }>(API_ENDPOINTS.CAS_LIST);
+      
+      // Convert the new API format to CasItem[]
+      if (response?.cas_with_names && Array.isArray(response.cas_with_names)) {
+        return response.cas_with_names.map(item => ({
+          cas_number: item.cas_number,
+          chemical_name: item.chemical_name,
+        })) as CasItem[];
       }
+      
+      // Fallback: if only cas_numbers is available
+      if (response?.cas_numbers && Array.isArray(response.cas_numbers)) {
+        return response.cas_numbers.map(cas => ({
+          cas_number: cas,
+        })) as CasItem[];
+      }
+      
       return [];
     },
   });

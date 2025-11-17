@@ -13,18 +13,43 @@ interface ChemicalInfoProps {
 interface ChemicalData {
   cas_number: string;
   chemical_name?: string;
-  n_species: number;
-  n_trophic_level: number;
-  n_results: number;
+  n_species?: number;
+  n_trophic_level?: number;
+  n_results?: number;
   [key: string]: any;
 }
 
 export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["chemical-info", cas],
-    queryFn: () => apiFetch<ChemicalData>(API_ENDPOINTS.CHEMICAL_INFO(cas)),
-    enabled: !!cas,
+  // Get chemical name from CAS list
+  const { data: casListData } = useQuery({
+    queryKey: ["cas-list"],
+    queryFn: async () => {
+      const response = await apiFetch<{
+        count: number;
+        cas_numbers: string[];
+        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+      }>(API_ENDPOINTS.CAS_LIST);
+      return response;
+    },
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   });
+
+  // Find chemical info from the list
+  const chemicalInfo = casListData?.cas_with_names?.find(
+    (item) => item.cas_number === cas
+  );
+
+  // For now, we'll use the data from CAS list
+  // In the future, we could add stats via /api/by_column if needed
+  const data: ChemicalData | undefined = chemicalInfo
+    ? {
+        cas_number: chemicalInfo.cas_number,
+        chemical_name: chemicalInfo.chemical_name,
+      }
+    : undefined;
+
+  const isLoading = !casListData;
+  const error = !isLoading && !chemicalInfo && cas ? new ApiError("CAS number not found in database", 404, "Not Found") : undefined;
 
   if (isLoading) {
     return (
@@ -84,15 +109,19 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
           )}
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <Badge variant="secondary" className="text-base py-1 px-4">
-            <Info className="h-4 w-4 mr-2" />
-            {data?.n_results} tests
-          </Badge>
-          <Badge variant="outline" className="text-base py-1 px-4">
-            {data?.n_species} species
-          </Badge>
-        </div>
+        {data && (
+          <div className="flex gap-3 pt-2">
+            <Badge variant="secondary" className="text-base py-1 px-4">
+              <Info className="h-4 w-4 mr-2" />
+              CAS: {data.cas_number}
+            </Badge>
+            {data.chemical_name && (
+              <Badge variant="outline" className="text-base py-1 px-4">
+                {data.chemical_name}
+              </Badge>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

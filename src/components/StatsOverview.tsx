@@ -5,19 +5,72 @@ import { Database, FlaskConical, Users, TestTubes, AlertCircle } from "lucide-re
 import { API_ENDPOINTS } from "@/lib/config";
 import { apiFetch, ApiError } from "@/lib/api";
 
+interface SummaryData {
+  rows: number;
+  columns: number;
+  columns_names: string[];
+}
+
+interface ByColumnData {
+  column: string;
+  unique_values: any[];
+  count: number;
+}
+
 interface Stats {
   total_records: number;
   unique_chemicals: number;
   unique_species: number;
   unique_taxa: number;
-  [key: string]: any;
 }
 
 export const StatsOverview = () => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["stats"],
-    queryFn: () => apiFetch<Stats>(API_ENDPOINTS.STATS),
+  // Get summary data
+  const { data: summaryData, error: summaryError } = useQuery({
+    queryKey: ["summary"],
+    queryFn: () => apiFetch<SummaryData>(API_ENDPOINTS.SUMMARY),
   });
+
+  // Get unique chemicals count from CAS list
+  const { data: casListData, error: casListError } = useQuery({
+    queryKey: ["cas-list"],
+    queryFn: async () => {
+      const response = await apiFetch<{
+        count: number;
+        cas_numbers: string[];
+        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+      }>(API_ENDPOINTS.CAS_LIST);
+      return response;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Get unique species count
+  const { data: speciesData } = useQuery({
+    queryKey: ["by-column", "species"],
+    queryFn: () => apiFetch<ByColumnData>(API_ENDPOINTS.BY_COLUMN("species")),
+    enabled: !!summaryData,
+  });
+
+  // Get unique taxa count
+  const { data: taxaData } = useQuery({
+    queryKey: ["by-column", "taxon"],
+    queryFn: () => apiFetch<ByColumnData>(API_ENDPOINTS.BY_COLUMN("taxon")),
+    enabled: !!summaryData,
+  });
+
+  // Combine all data
+  const data: Stats | undefined = summaryData
+    ? {
+        total_records: summaryData.rows,
+        unique_chemicals: casListData?.count || 0,
+        unique_species: speciesData?.count || 0,
+        unique_taxa: taxaData?.count || 0,
+      }
+    : undefined;
+
+  const isLoading = !summaryData || !casListData;
+  const error = summaryError || casListError;
 
   const statsCards = [
     {
