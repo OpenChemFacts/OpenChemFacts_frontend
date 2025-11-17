@@ -3,8 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { FlaskConical, Info } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://openchemfacts-production.up.railway.app";
+import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
 
 interface ChemicalInfoProps {
   cas: string;
@@ -13,8 +12,9 @@ interface ChemicalInfoProps {
 interface ChemicalData {
   cas_number: string;
   chemical_name?: string;
-  number_of_tests: number;
-  species_tested: number;
+  n_species: number;
+  n_trophic_level: number;
+  n_results: number;
   [key: string]: any;
 }
 
@@ -22,7 +22,7 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["chemical-info", cas],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/chemical-info/${cas}`);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CHEMICAL_INFO(cas)}`);
       if (!response.ok) throw new Error("Failed to fetch chemical info");
       return response.json() as Promise<ChemicalData>;
     },
@@ -77,10 +77,10 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
         <div className="flex gap-3 pt-2">
           <Badge variant="secondary" className="text-base py-1 px-4">
             <Info className="h-4 w-4 mr-2" />
-            {data?.number_of_tests} tests
+            {data?.n_results} tests
           </Badge>
           <Badge variant="outline" className="text-base py-1 px-4">
-            {data?.species_tested} species
+            {data?.n_species} species
           </Badge>
         </div>
       </CardContent>

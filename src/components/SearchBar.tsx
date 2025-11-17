@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://openchemfacts-production.up.railway.app";
+import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
 
 interface SearchBarProps {
   onCasSelect: (cas: string) => void;
@@ -19,7 +18,7 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const { data: casList } = useQuery({
     queryKey: ["cas-list"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/cas-list`);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAS_LIST}`);
       if (!response.ok) throw new Error("Failed to fetch CAS list");
       return response.json() as Promise<string[]>;
     },

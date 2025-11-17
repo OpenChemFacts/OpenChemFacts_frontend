@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3 } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://openchemfacts-production.up.railway.app";
+import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
 
 interface PlotViewerProps {
   cas: string;
@@ -14,7 +13,9 @@ interface PlotViewerProps {
 export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const plotRef = useRef<HTMLDivElement>(null);
 
-  const endpoint = type === "ssd" ? "ssd-plot" : "ec10eq-plot";
+  const endpoint = type === "ssd" 
+    ? API_ENDPOINTS.SSD_PLOT(cas)
+    : API_ENDPOINTS.EC10EQ_PLOT(cas);
   const title = type === "ssd" 
     ? "Species Sensitivity Distribution (SSD)" 
     : "EC10 Equivalent";
@@ -22,7 +23,7 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["plot", cas, type],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/${endpoint}/${cas}`);
+      const response = await fetch(`${API_BASE_URL}${endpoint}`);
       if (!response.ok) throw new Error("Failed to fetch plot");
       return response.json();
     },

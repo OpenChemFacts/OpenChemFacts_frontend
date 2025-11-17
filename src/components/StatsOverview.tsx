@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Database, FlaskConical, Users, TestTubes } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "https://openchemfacts-production.up.railway.app";
+import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
 
 interface Stats {
-  total_chemicals: number;
-  total_tests: number;
-  total_species: number;
+  total_records: number;
+  unique_chemicals: number;
+  unique_species: number;
+  unique_taxa: number;
   [key: string]: any;
 }
 
@@ -16,7 +16,7 @@ export const StatsOverview = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["stats"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/stats`);
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.STATS}`);
       if (!response.ok) throw new Error("Failed to fetch stats");
       return response.json() as Promise<Stats>;
     },
@@ -25,19 +25,19 @@ export const StatsOverview = () => {
   const statsCards = [
     {
       title: "Chemical Substances",
-      value: data?.total_chemicals,
+      value: data?.unique_chemicals,
       icon: FlaskConical,
       color: "text-primary",
     },
     {
-      title: "Tests Performed",
-      value: data?.total_tests,
+      title: "Total Records",
+      value: data?.total_records,
       icon: TestTubes,
       color: "text-accent",
     },
     {
       title: "Species Tested",
-      value: data?.total_species,
+      value: data?.unique_species,
       icon: Users,
       color: "text-secondary",
     },
