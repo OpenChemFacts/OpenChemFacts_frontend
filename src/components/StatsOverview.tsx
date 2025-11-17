@@ -38,7 +38,7 @@ export const StatsOverview = () => {
       const response = await apiFetch<{
         count: number;
         cas_numbers: string[];
-        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+        cas_with_names: Record<string, string> | Array<{ cas_number: string; chemical_name?: string }>;
       }>(API_ENDPOINTS.CAS_LIST);
       return response;
     },

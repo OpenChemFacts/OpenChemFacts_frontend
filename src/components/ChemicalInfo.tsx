@@ -27,7 +27,7 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
       const response = await apiFetch<{
         count: number;
         cas_numbers: string[];
-        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+        cas_with_names: Record<string, string> | Array<{ cas_number: string; chemical_name?: string }>;
       }>(API_ENDPOINTS.CAS_LIST);
       return response;
     },
@@ -35,21 +35,30 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
   });
 
   // Find chemical info from the list
-  const chemicalInfo = casListData?.cas_with_names?.find(
-    (item) => item.cas_number === cas
-  );
+  // Backend returns cas_with_names as object {cas_number: chemical_name}
+  let chemicalName: string | undefined;
+  if (casListData?.cas_with_names) {
+    if (Array.isArray(casListData.cas_with_names)) {
+      // Legacy array format
+      const item = casListData.cas_with_names.find((item) => item.cas_number === cas);
+      chemicalName = item?.chemical_name;
+    } else {
+      // Object format {cas_number: chemical_name}
+      chemicalName = (casListData.cas_with_names as Record<string, string>)[cas];
+    }
+  }
 
   // For now, we'll use the data from CAS list
   // In the future, we could add stats via /api/by_column if needed
-  const data: ChemicalData | undefined = chemicalInfo
+  const data: ChemicalData | undefined = cas
     ? {
-        cas_number: chemicalInfo.cas_number,
-        chemical_name: chemicalInfo.chemical_name,
+        cas_number: cas,
+        chemical_name: chemicalName,
       }
     : undefined;
 
   const isLoading = !casListData;
-  const error = !isLoading && !chemicalInfo && cas ? new ApiError("CAS number not found in database", 404, "Not Found") : undefined;
+  const error = !isLoading && !chemicalName && cas ? new ApiError("CAS number not found in database", 404, "Not Found") : undefined;
 
   if (isLoading) {
     return (

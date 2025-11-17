@@ -28,15 +28,26 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
       const response = await apiFetch<{
         count: number;
         cas_numbers: string[];
-        cas_with_names: Array<{ cas_number: string; chemical_name?: string }>;
+        cas_with_names: Record<string, string> | Array<{ cas_number: string; chemical_name?: string }>;
       }>(API_ENDPOINTS.CAS_LIST);
       
-      // Convert the new API format to CasItem[]
-      if (response?.cas_with_names && Array.isArray(response.cas_with_names)) {
-        return response.cas_with_names.map(item => ({
-          cas_number: item.cas_number,
-          chemical_name: item.chemical_name,
-        })) as CasItem[];
+      // Backend returns cas_with_names as an object {cas_number: chemical_name}
+      // Convert it to array format for frontend use
+      if (response?.cas_with_names) {
+        if (Array.isArray(response.cas_with_names)) {
+          // If it's already an array (legacy format), use it directly
+          return response.cas_with_names.map(item => ({
+            cas_number: item.cas_number,
+            chemical_name: item.chemical_name,
+          })) as CasItem[];
+        } else {
+          // Convert object format {cas: name} to array format
+          const casWithNames = response.cas_with_names as Record<string, string>;
+          return Object.entries(casWithNames).map(([cas_number, chemical_name]) => ({
+            cas_number,
+            chemical_name: chemical_name || undefined,
+          })) as CasItem[];
+        }
       }
       
       // Fallback: if only cas_numbers is available
