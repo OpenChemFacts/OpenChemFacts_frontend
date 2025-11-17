@@ -38,11 +38,62 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
       try {
         // Vérifier que les données Plotly sont valides
         if (data.data && data.layout) {
-          (window as any).Plotly.newPlot(plotRef.current, data.data, data.layout, {
-            responsive: true,
-            displayModeBar: true,
-            ...(data.config || {}),
-          });
+          // Améliorer le layout pour éviter les chevauchements
+          const enhancedLayout = {
+            ...data.layout,
+            autosize: true,
+            margin: {
+              l: 80,
+              r: 120,
+              t: 100,
+              b: 120,
+              pad: 10
+            },
+            font: {
+              size: 12
+            },
+            xaxis: {
+              ...data.layout.xaxis,
+              automargin: true,
+            },
+            yaxis: {
+              ...data.layout.yaxis,
+              automargin: true,
+            },
+            legend: {
+              ...data.layout.legend,
+              orientation: 'v',
+              x: 1.02,
+              y: 1,
+              xanchor: 'left',
+              yanchor: 'top',
+              font: {
+                size: 11
+              }
+            }
+          };
+
+          (window as any).Plotly.newPlot(
+            plotRef.current, 
+            data.data, 
+            enhancedLayout, 
+            {
+              responsive: true,
+              displayModeBar: true,
+              displaylogo: false,
+              modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+              ...(data.config || {}),
+            }
+          );
+
+          // Ajouter un resize listener pour s'assurer que le graphique s'adapte
+          const resizeHandler = () => {
+            if (plotRef.current && (window as any).Plotly) {
+              (window as any).Plotly.Plots.resize(plotRef.current);
+            }
+          };
+          window.addEventListener('resize', resizeHandler);
+          return () => window.removeEventListener('resize', resizeHandler);
         } else {
           console.error("Invalid Plotly data structure:", data);
         }
@@ -110,7 +161,7 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div ref={plotRef} className="w-full min-h-[400px]" />
+        <div ref={plotRef} className="w-full h-[500px] md:h-[600px]" />
       </CardContent>
     </Card>
   );
