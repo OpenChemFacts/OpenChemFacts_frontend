@@ -19,6 +19,48 @@ interface PlotlyData {
   config?: any;
 }
 
+// Fonction pour décoder les données numpy/base64 en tableaux JavaScript
+const decodeNumpyData = (data: any): any[] => {
+  if (!data || typeof data !== 'object') return data;
+  
+  // Si c'est un objet avec dtype et bdata, décoder
+  if (data.dtype && data.bdata) {
+    try {
+      const binaryString = atob(data.bdata);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const float64Array = new Float64Array(bytes.buffer);
+      return Array.from(float64Array);
+    } catch (e) {
+      console.error('[BenchmarkComparison] Error decoding numpy data:', e);
+      return [];
+    }
+  }
+  
+  return data;
+};
+
+// Fonction récursive pour traiter toutes les traces
+const processPlotlyTraces = (traces: any[]): any[] => {
+  if (!Array.isArray(traces)) return traces;
+  
+  return traces.map(trace => {
+    const processedTrace = { ...trace };
+    
+    // Décoder x et y si nécessaire
+    if (trace.x) {
+      processedTrace.x = decodeNumpyData(trace.x);
+    }
+    if (trace.y) {
+      processedTrace.y = decodeNumpyData(trace.y);
+    }
+    
+    return processedTrace;
+  });
+};
+
 export const BenchmarkComparison = () => {
   const [selectedCas, setSelectedCas] = useState<string[]>([]);
   const [searchTerms, setSearchTerms] = useState<string[]>(["", "", ""]);
@@ -77,18 +119,22 @@ export const BenchmarkComparison = () => {
   useEffect(() => {
     if (plotData && plotRef.current && plotlyLoaded && (window as any).Plotly) {
       try {
-        console.log('[BenchmarkComparison] Plotly data received:', plotData);
-        console.log('[BenchmarkComparison] Number of traces:', plotData.data?.length);
-        console.log('[BenchmarkComparison] Traces details:', plotData.data?.map((trace: any) => ({
+        console.log('[BenchmarkComparison] Raw data received:', plotData);
+        
+        // Décoder les traces avant de les afficher
+        const processedTraces = processPlotlyTraces(plotData.data || []);
+        
+        console.log('[BenchmarkComparison] Processed traces:', processedTraces.length);
+        console.log('[BenchmarkComparison] Traces details:', processedTraces.map((trace: any) => ({
           name: trace.name,
           type: trace.type,
           mode: trace.mode,
-          x_length: trace.x?.length || trace.x?.dtype,
-          y_length: trace.y?.length || trace.y?.dtype,
+          x_length: Array.isArray(trace.x) ? trace.x.length : 'not decoded',
+          y_length: Array.isArray(trace.y) ? trace.y.length : 'not decoded',
         })));
         
         // Vérifier que les données Plotly sont valides
-        if (plotData.data && plotData.layout) {
+        if (processedTraces.length > 0 && plotData.layout) {
           // Nettoyer le graphique existant avant d'en créer un nouveau
           if (plotRef.current) {
             (window as any).Plotly.purge(plotRef.current);
@@ -175,10 +221,6 @@ export const BenchmarkComparison = () => {
             },
           };
 
-          // Préserver 100% des traces (data) sans modification
-          // plotData.data contient toutes les traces (courbes, scatter, barres, etc.)
-          const allTraces = Array.isArray(plotData.data) ? plotData.data : [];
-          
           // Configuration : fusionner avec la config originale
           const plotConfig = {
             responsive: true,
@@ -189,7 +231,7 @@ export const BenchmarkComparison = () => {
           };
 
           console.log('[BenchmarkComparison] Rendering plot with:', {
-            tracesCount: allTraces.length,
+            tracesCount: processedTraces.length,
             layoutKeys: Object.keys(enhancedLayout),
             hasAnnotations: !!enhancedLayout.annotations,
             hasShapes: !!enhancedLayout.shapes,
@@ -199,7 +241,7 @@ export const BenchmarkComparison = () => {
 
           (window as any).Plotly.newPlot(
             plotRef.current,
-            allTraces, // Utiliser toutes les traces sans modification
+            processedTraces, // Utiliser les traces décodées
             enhancedLayout,
             plotConfig
           );
