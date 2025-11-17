@@ -160,18 +160,22 @@ export const BenchmarkComparison = () => {
             // D'abord, préserver TOUS les éléments du layout original
             ...plotData.layout,
             
-            // Améliorations pour l'affichage (fusionnées avec les valeurs existantes)
-            autosize: plotData.layout.autosize ?? true,
-            showlegend: plotData.layout.showlegend !== false, // Préserver la valeur originale si définie
+            // Rendre le graphique entièrement responsive
+            autosize: true,
+            showlegend: plotData.layout.showlegend !== false,
             
-            // Marges : fusionner intelligemment (préserver les valeurs originales, ajouter des défauts si manquantes)
+            // Retirer les dimensions fixes pour permettre l'adaptation automatique
+            width: undefined,
+            height: undefined,
+            
+            // Marges optimisées pour la visibilité complète
             margin: {
-              l: 80,
-              r: 120,
-              t: 100,
-              b: 120,
+              l: 60,
+              r: 100,
+              t: 120,
+              b: 80,
               pad: 10,
-              ...plotData.layout.margin, // Les valeurs originales écrasent les défauts
+              ...plotData.layout.margin,
             },
             
             // Font : fusionner avec la font existante
@@ -459,7 +463,7 @@ export const BenchmarkComparison = () => {
             </div>
           </div>
         ) : (
-          <div ref={plotRef} className="w-full h-[500px] md:h-[600px]" />
+          <div ref={plotRef} className="w-full min-h-[600px] lg:min-h-[700px]" />
         )}
       </CardContent>
     </Card>
