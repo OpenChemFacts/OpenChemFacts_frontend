@@ -16,10 +16,22 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const { data: casList, error } = useQuery({
+  const { data: casListResponse, error } = useQuery({
     queryKey: ["cas-list"],
-    queryFn: () => apiFetch<string[]>(API_ENDPOINTS.CAS_LIST),
+    queryFn: async () => {
+      const response = await apiFetch<any>(API_ENDPOINTS.CAS_LIST);
+      console.log("CAS List API Response:", response);
+      // Handle both array and object responses
+      if (Array.isArray(response)) {
+        return response;
+      } else if (response && typeof response === 'object' && response.cas_list) {
+        return response.cas_list;
+      }
+      return [];
+    },
   });
+
+  const casList = casListResponse || [];
 
   // Afficher une notification si erreur de chargement de la liste
   useEffect(() => {
@@ -28,9 +40,11 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
     }
   }, [error]);
 
-  const filteredCas = casList?.filter((cas) =>
-    cas.toLowerCase().includes(searchTerm.toLowerCase())
-  ).slice(0, 10);
+  const filteredCas = Array.isArray(casList) 
+    ? casList.filter((cas) =>
+        cas.toLowerCase().includes(searchTerm.toLowerCase())
+      ).slice(0, 10)
+    : [];
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -39,14 +53,16 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
     }
     
     // Try exact CAS match first
-    if (casList?.includes(searchTerm)) {
+    if (Array.isArray(casList) && casList.includes(searchTerm)) {
       onCasSelect(searchTerm);
       setShowSuggestions(false);
     } else {
       // Try case-insensitive partial match
-      const matchedCas = casList?.find(cas => 
-        cas.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const matchedCas = Array.isArray(casList) 
+        ? casList.find(cas => 
+            cas.toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : null;
       
       if (matchedCas) {
         onCasSelect(matchedCas);
