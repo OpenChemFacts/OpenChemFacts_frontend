@@ -23,6 +23,7 @@ export const BenchmarkComparison = () => {
   const [selectedCas, setSelectedCas] = useState<string[]>([]);
   const [searchTerms, setSearchTerms] = useState<string[]>(["", "", ""]);
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
+  const [plotlyLoaded, setPlotlyLoaded] = useState(false);
   const plotRef = useRef<HTMLDivElement>(null);
 
   // Fetch CAS list for autocomplete
@@ -74,7 +75,7 @@ export const BenchmarkComparison = () => {
 
   // Render Plotly chart
   useEffect(() => {
-    if (plotData && plotRef.current && (window as any).Plotly) {
+    if (plotData && plotRef.current && plotlyLoaded && (window as any).Plotly) {
       try {
         console.log('[BenchmarkComparison] Plotly data received:', plotData);
         console.log('[BenchmarkComparison] Number of traces:', plotData.data?.length);
@@ -88,9 +89,15 @@ export const BenchmarkComparison = () => {
         
         // Vérifier que les données Plotly sont valides
         if (plotData.data && plotData.layout) {
+          // Nettoyer le graphique existant avant d'en créer un nouveau
+          if (plotRef.current) {
+            (window as any).Plotly.purge(plotRef.current);
+          }
+
           const enhancedLayout = {
             ...plotData.layout,
             autosize: true,
+            showlegend: true, // S'assurer que la légende est visible au niveau du layout
             margin: {
               l: 80,
               r: 120,
@@ -110,7 +117,7 @@ export const BenchmarkComparison = () => {
               automargin: true,
             },
             legend: {
-              ...plotData.layout.legend,
+              ...(plotData.layout.legend || {}),
               orientation: 'v',
               x: 1.02,
               y: 1,
@@ -118,7 +125,9 @@ export const BenchmarkComparison = () => {
               yanchor: 'top',
               font: {
                 size: 11
-              }
+              },
+              // S'assurer que la légende est visible
+              visible: true,
             }
           };
 
@@ -141,7 +150,13 @@ export const BenchmarkComparison = () => {
             }
           };
           window.addEventListener("resize", resizeHandler);
-          return () => window.removeEventListener("resize", resizeHandler);
+          return () => {
+            window.removeEventListener("resize", resizeHandler);
+            // Nettoyer le graphique lors du démontage
+            if (plotRef.current && (window as any).Plotly) {
+              (window as any).Plotly.purge(plotRef.current);
+            }
+          };
         } else {
           console.error("[BenchmarkComparison] Invalid Plotly data structure:", plotData);
         }
@@ -149,16 +164,41 @@ export const BenchmarkComparison = () => {
         console.error("[BenchmarkComparison] Error rendering Plotly chart:", plotError);
       }
     }
-  }, [plotData]);
+  }, [plotData, plotlyLoaded]);
 
   // Load Plotly dynamically
   useEffect(() => {
-    if (!(window as any).Plotly) {
-      const script = document.createElement("script");
-      script.src = "https://cdn.plot.ly/plotly-2.27.0.min.js";
-      script.async = true;
-      document.body.appendChild(script);
+    if ((window as any).Plotly) {
+      setPlotlyLoaded(true);
+      return;
     }
+
+    // Vérifier si le script est déjà en cours de chargement
+    const existingScript = document.querySelector('script[src="https://cdn.plot.ly/plotly-2.27.0.min.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        setPlotlyLoaded(true);
+      });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://cdn.plot.ly/plotly-2.27.0.min.js";
+    script.async = true;
+    script.onload = () => {
+      setPlotlyLoaded(true);
+    };
+    script.onerror = () => {
+      console.error("[BenchmarkComparison] Failed to load Plotly script");
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      // Nettoyer le graphique lors du démontage
+      if (plotRef.current && (window as any).Plotly) {
+        (window as any).Plotly.purge(plotRef.current);
+      }
+    };
   }, []);
 
   const getFilteredSuggestions = (index: number) => {
