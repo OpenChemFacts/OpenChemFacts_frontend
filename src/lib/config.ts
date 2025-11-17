@@ -1,11 +1,15 @@
 /**
  * Configuration de l'API Railway
  * L'URL peut être définie via la variable d'environnement VITE_API_BASE_URL
- * ou utilise l'URL par défaut de l'API Railway
+ * ou utilise l'URL par défaut selon l'environnement :
+ * - Développement local : http://localhost:8000
+ * - Production : https://api-production-e40f.up.railway.app
  */
 export const API_BASE_URL = 
   import.meta.env.VITE_API_BASE_URL || 
-  'https://api-production-e40f.up.railway.app';
+  (import.meta.env.DEV 
+    ? 'http://localhost:8000' 
+    : 'https://api-production-e40f.up.railway.app');
 
 export const API_ENDPOINTS = {
   ROOT: '/',

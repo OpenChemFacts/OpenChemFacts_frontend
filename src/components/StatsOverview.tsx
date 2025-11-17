@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Database, FlaskConical, Users, TestTubes } from "lucide-react";
-import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
+import { Database, FlaskConical, Users, TestTubes, AlertCircle } from "lucide-react";
+import { API_ENDPOINTS } from "@/lib/config";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface Stats {
   total_records: number;
@@ -13,13 +14,9 @@ interface Stats {
 }
 
 export const StatsOverview = () => {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["stats"],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.STATS}`);
-      if (!response.ok) throw new Error("Failed to fetch stats");
-      return response.json() as Promise<Stats>;
-    },
+    queryFn: () => apiFetch<Stats>(API_ENDPOINTS.STATS),
   });
 
   const statsCards = [
@@ -42,6 +39,28 @@ export const StatsOverview = () => {
       color: "text-secondary",
     },
   ];
+
+  if (error) {
+    const errorMessage = error instanceof ApiError 
+      ? error.message 
+      : "Erreur lors du chargement des statistiques";
+    
+    return (
+      <div className="mt-12">
+        <Card className="shadow-card border-destructive">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              <div>
+                <p className="font-semibold">Erreur</p>
+                <p className="text-sm text-muted-foreground">{errorMessage}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-12">

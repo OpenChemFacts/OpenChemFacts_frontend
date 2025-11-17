@@ -6,7 +6,26 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        // Ne pas retry pour les erreurs 4xx (sauf 408, 429)
+        if (error?.status >= 400 && error?.status < 500) {
+          if (error?.status === 408 || error?.status === 429) {
+            return failureCount < 2; // Retry jusqu'à 2 fois pour timeout/rate limit
+          }
+          return false;
+        }
+        // Retry jusqu'à 3 fois pour les erreurs 5xx et erreurs réseau
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

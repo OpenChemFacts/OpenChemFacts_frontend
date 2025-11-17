@@ -2,12 +2,19 @@ import { useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3 } from "lucide-react";
-import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
+import { BarChart3, AlertCircle } from "lucide-react";
+import { API_ENDPOINTS } from "@/lib/config";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface PlotViewerProps {
   cas: string;
   type: "ssd" | "ec10eq";
+}
+
+interface PlotlyData {
+  data: any[];
+  layout: any;
+  config?: any;
 }
 
 export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
@@ -22,20 +29,26 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["plot", cas, type],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
-      if (!response.ok) throw new Error("Failed to fetch plot");
-      return response.json();
-    },
+    queryFn: () => apiFetch<PlotlyData>(endpoint),
     enabled: !!cas,
   });
 
   useEffect(() => {
     if (data && plotRef.current && (window as any).Plotly) {
-      (window as any).Plotly.newPlot(plotRef.current, data.data, data.layout, {
-        responsive: true,
-        displayModeBar: true,
-      });
+      try {
+        // Vérifier que les données Plotly sont valides
+        if (data.data && data.layout) {
+          (window as any).Plotly.newPlot(plotRef.current, data.data, data.layout, {
+            responsive: true,
+            displayModeBar: true,
+            ...(data.config || {}),
+          });
+        } else {
+          console.error("Invalid Plotly data structure:", data);
+        }
+      } catch (plotError) {
+        console.error("Error rendering Plotly chart:", plotError);
+      }
     }
   }, [data]);
 
@@ -66,10 +79,23 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   }
 
   if (error) {
+    const errorMessage = error instanceof ApiError 
+      ? error.message 
+      : "Erreur lors du chargement du graphique";
+    const isNotFound = error instanceof ApiError && error.status === 404;
+    
     return (
       <Card className="shadow-card border-destructive">
         <CardContent className="pt-6">
-          <p className="text-destructive">Error loading plot</p>
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <p className="font-semibold">
+                {isNotFound ? "Graphique non disponible" : "Erreur"}
+              </p>
+              <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

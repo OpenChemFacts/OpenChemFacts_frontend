@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
+import { API_ENDPOINTS } from "@/lib/config";
+import { apiFetch } from "@/lib/api";
 
 interface SearchBarProps {
   onCasSelect: (cas: string) => void;
@@ -15,14 +16,17 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const { data: casList } = useQuery({
+  const { data: casList, error } = useQuery({
     queryKey: ["cas-list"],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CAS_LIST}`);
-      if (!response.ok) throw new Error("Failed to fetch CAS list");
-      return response.json() as Promise<string[]>;
-    },
+    queryFn: () => apiFetch<string[]>(API_ENDPOINTS.CAS_LIST),
   });
+
+  // Afficher une notification si erreur de chargement de la liste
+  useEffect(() => {
+    if (error) {
+      toast.error("Impossible de charger la liste des produits chimiques");
+    }
+  }, [error]);
 
   const filteredCas = casList?.filter((cas) =>
     cas.toLowerCase().includes(searchTerm.toLowerCase())

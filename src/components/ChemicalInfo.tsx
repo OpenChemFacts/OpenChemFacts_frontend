@@ -2,8 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { FlaskConical, Info } from "lucide-react";
-import { API_BASE_URL, API_ENDPOINTS } from "@/lib/config";
+import { FlaskConical, Info, AlertCircle } from "lucide-react";
+import { API_ENDPOINTS } from "@/lib/config";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface ChemicalInfoProps {
   cas: string;
@@ -21,11 +22,7 @@ interface ChemicalData {
 export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["chemical-info", cas],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.CHEMICAL_INFO(cas)}`);
-      if (!response.ok) throw new Error("Failed to fetch chemical info");
-      return response.json() as Promise<ChemicalData>;
-    },
+    queryFn: () => apiFetch<ChemicalData>(API_ENDPOINTS.CHEMICAL_INFO(cas)),
     enabled: !!cas,
   });
 
@@ -43,10 +40,23 @@ export const ChemicalInfo = ({ cas }: ChemicalInfoProps) => {
   }
 
   if (error) {
+    const errorMessage = error instanceof ApiError 
+      ? error.message 
+      : "Erreur lors du chargement des informations";
+    const isNotFound = error instanceof ApiError && error.status === 404;
+    
     return (
       <Card className="shadow-card border-destructive">
         <CardContent className="pt-6">
-          <p className="text-destructive">Error loading chemical information</p>
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <p className="font-semibold">
+                {isNotFound ? "Produit chimique non trouvé" : "Erreur"}
+              </p>
+              <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
