@@ -94,54 +94,114 @@ export const BenchmarkComparison = () => {
             (window as any).Plotly.purge(plotRef.current);
           }
 
+          // Préserver 100% des éléments du layout original
+          // Fusionner intelligemment les améliorations sans écraser les éléments existants
+          
+          // D'abord, préserver tous les axes secondaires (xaxis2, yaxis2, xaxis3, etc.)
+          // avec amélioration de automargin seulement si absent
+          const secondaryAxes = Object.keys(plotData.layout)
+            .filter(key => /^(x|y)axis\d+$/.test(key))
+            .reduce((acc, key) => {
+              acc[key] = {
+                ...plotData.layout[key], // Préserver toutes les valeurs originales
+                automargin: plotData.layout[key]?.automargin ?? true, // Ajouter automargin seulement si absent
+              };
+              return acc;
+            }, {} as any);
+          
+          // Construire le layout amélioré en préservant TOUS les éléments originaux
           const enhancedLayout = {
+            // D'abord, préserver TOUS les éléments du layout original
             ...plotData.layout,
-            autosize: true,
-            showlegend: true, // S'assurer que la légende est visible au niveau du layout
+            
+            // Améliorations pour l'affichage (fusionnées avec les valeurs existantes)
+            autosize: plotData.layout.autosize ?? true,
+            showlegend: plotData.layout.showlegend !== false, // Préserver la valeur originale si définie
+            
+            // Marges : fusionner intelligemment (préserver les valeurs originales, ajouter des défauts si manquantes)
             margin: {
               l: 80,
               r: 120,
               t: 100,
               b: 120,
-              pad: 10
+              pad: 10,
+              ...plotData.layout.margin, // Les valeurs originales écrasent les défauts
             },
+            
+            // Font : fusionner avec la font existante
             font: {
-              size: 12
+              size: 12,
+              ...plotData.layout.font, // Les valeurs originales écrasent les défauts
             },
+            
+            // Axe X principal : préserver toutes les propriétés et améliorer seulement automargin
             xaxis: {
-              ...plotData.layout.xaxis,
-              automargin: true,
+              ...plotData.layout.xaxis, // D'abord préserver toutes les valeurs originales
+              automargin: plotData.layout.xaxis?.automargin ?? true, // Ajouter automargin seulement si absent
             },
+            
+            // Axe Y principal : préserver toutes les propriétés et améliorer seulement automargin
             yaxis: {
-              ...plotData.layout.yaxis,
-              automargin: true,
+              ...plotData.layout.yaxis, // D'abord préserver toutes les valeurs originales
+              automargin: plotData.layout.yaxis?.automargin ?? true, // Ajouter automargin seulement si absent
             },
-            legend: {
-              ...(plotData.layout.legend || {}),
+            
+            // Ajouter les axes secondaires préservés
+            ...secondaryAxes,
+            
+            // Légende : fusionner avec la configuration existante
+            legend: plotData.layout.legend ? {
+              ...plotData.layout.legend, // D'abord préserver toutes les valeurs originales
+              // Ensuite, ajouter des valeurs par défaut seulement si elles n'existent pas
+              orientation: plotData.layout.legend.orientation ?? 'v',
+              x: plotData.layout.legend.x ?? 1.02,
+              y: plotData.layout.legend.y ?? 1,
+              xanchor: plotData.layout.legend.xanchor ?? 'left',
+              yanchor: plotData.layout.legend.yanchor ?? 'top',
+              visible: plotData.layout.legend.visible !== false,
+              font: {
+                size: 11, // Valeur par défaut
+                ...plotData.layout.legend.font, // Les valeurs originales écrasent les défauts
+              },
+            } : {
+              // Valeurs par défaut si aucune légende n'est définie
               orientation: 'v',
               x: 1.02,
               y: 1,
               xanchor: 'left',
               yanchor: 'top',
-              font: {
-                size: 11
-              },
-              // S'assurer que la légende est visible
               visible: true,
-            }
+              font: { size: 11 },
+            },
           };
+
+          // Préserver 100% des traces (data) sans modification
+          // plotData.data contient toutes les traces (courbes, scatter, barres, etc.)
+          const allTraces = Array.isArray(plotData.data) ? plotData.data : [];
+          
+          // Configuration : fusionner avec la config originale
+          const plotConfig = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ["lasso2d", "select2d"],
+            ...(plotData.config || {}), // Préserver toutes les options de config originales
+          };
+
+          console.log('[BenchmarkComparison] Rendering plot with:', {
+            tracesCount: allTraces.length,
+            layoutKeys: Object.keys(enhancedLayout),
+            hasAnnotations: !!enhancedLayout.annotations,
+            hasShapes: !!enhancedLayout.shapes,
+            hasImages: !!enhancedLayout.images,
+            secondaryAxes: Object.keys(secondaryAxes),
+          });
 
           (window as any).Plotly.newPlot(
             plotRef.current,
-            plotData.data,
+            allTraces, // Utiliser toutes les traces sans modification
             enhancedLayout,
-            {
-              responsive: true,
-              displayModeBar: true,
-              displaylogo: false,
-              modeBarButtonsToRemove: ["lasso2d", "select2d"],
-              ...(plotData.config || {}),
-            }
+            plotConfig
           );
 
           const resizeHandler = () => {
