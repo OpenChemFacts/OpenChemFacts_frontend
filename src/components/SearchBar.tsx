@@ -132,26 +132,28 @@ export const SearchBar = ({ onCasSelect }: SearchBarProps) => {
   }, [showSuggestions]);
 
   return (
-    <div className="relative max-w-2xl mx-auto">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Input
-            type="text"
-            placeholder="Rechercher par numéro CAS ou nom de produit chimique (ex: 42576-02-3)..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setShowSuggestions(true);
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            className="pl-10"
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <div className="relative max-w-3xl mx-auto">
+      <div className="rounded-xl border-2 border-primary/20 bg-card/80 backdrop-blur-sm shadow-lg p-6 animate-fade-in hover:shadow-xl transition-all duration-300">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Input
+              type="text"
+              placeholder="Rechercher par numéro CAS ou nom de produit chimique (ex: 42576-02-3)..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-12 h-12 text-base border-2 focus:border-primary/50"
+            />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+          </div>
+          <Button onClick={handleSearch} size="lg" className="h-12 px-6 font-semibold">
+            Rechercher
+          </Button>
         </div>
-        <Button onClick={handleSearch}>
-          Rechercher
-        </Button>
       </div>
 
       {showSuggestions && searchTerm && (
