@@ -1,9 +1,10 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { FlaskConical, Info } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { useCasList } from "@/hooks/useCasList";
-import { normalizeCas } from "@/lib/cas-utils";
+import { normalizeCas, compareCas } from "@/lib/cas-utils";
 
 interface ChemicalInfoProps {
   cas: string;
@@ -21,13 +22,24 @@ interface ChemicalData {
 
 export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalInfoProps) => {
   const normalizedCas = cas ? normalizeCas(cas) : '';
+  const [chemicalName, setChemicalName] = useState<string | undefined>(propChemicalName);
   
-  // Utiliser le hook partagé pour obtenir la liste des CAS (fallback si pas de nom en props)
-  const { getChemicalName, isLoading } = useCasList();
+  // Utiliser le hook partagé pour obtenir la liste des CAS
+  const { getChemicalName, isLoading, casList } = useCasList();
   
-  // Priorité 1: Utiliser le nom passé en props (depuis SearchBar)
-  // Priorité 2: Chercher dans la liste des CAS via le hook
-  const chemicalName = propChemicalName || (normalizedCas ? getChemicalName(normalizedCas) : undefined);
+  // Récupérer systématiquement le nom chimique si pas déjà fourni en props
+  useEffect(() => {
+    if (propChemicalName) {
+      // Si un nom est fourni en props, l'utiliser
+      setChemicalName(propChemicalName);
+    } else if (normalizedCas && casList.length > 0) {
+      // Chercher le nom dans la liste des CAS en utilisant compareCas
+      const item = casList.find((item) => compareCas(item.cas_number, normalizedCas));
+      if (item?.chemical_name) {
+        setChemicalName(item.chemical_name);
+      }
+    }
+  }, [normalizedCas, propChemicalName, casList]);
 
   // For now, we'll use the data from props or CAS list
   // In the future, we could add stats via /api/by_column if needed
@@ -73,29 +85,21 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
           </div>
           <div>
             <p className="text-sm text-muted-foreground mb-1">Name</p>
-            {isLoading ? (
+            {isLoading || (normalizedCas && !chemicalName && casList.length === 0) ? (
               <Skeleton className="h-6 w-48" />
             ) : chemicalName ? (
               <p className="font-semibold text-base">{chemicalName}</p>
             ) : (
-              <p className="font-semibold text-muted-foreground italic">Chargement...</p>
+              <p className="font-semibold text-muted-foreground italic">Nom non disponible</p>
             )}
           </div>
         </div>
 
-        {data && (
+        {chemicalName && (
           <div className="flex gap-3 pt-2">
-            <Badge variant="secondary" className="text-base py-1 px-4">
-              <span className="flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                CAS: {data.cas_number}
-              </span>
+            <Badge variant="outline" className="text-base py-1 px-4">
+              {chemicalName}
             </Badge>
-            {chemicalName && (
-              <Badge variant="outline" className="text-base py-1 px-4">
-                {chemicalName}
-              </Badge>
-            )}
           </div>
         )}
       </CardContent>
