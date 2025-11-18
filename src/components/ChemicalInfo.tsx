@@ -71,37 +71,14 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
           <FlaskConical className="h-5 w-5 text-primary" />
           Chemical Information
         </CardTitle>
-        {chemicalName && (
-          <p className="text-xl font-semibold text-foreground mt-2">
-            {chemicalName}
-          </p>
-        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <p className="text-sm text-muted-foreground mb-1">CAS Number</p>
             <p className="font-mono font-semibold text-lg">{data?.cas_number}</p>
           </div>
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">Name</p>
-            {isLoading || (normalizedCas && !chemicalName && casList.length === 0) ? (
-              <Skeleton className="h-6 w-48" />
-            ) : chemicalName ? (
-              <p className="font-semibold text-base">{chemicalName}</p>
-            ) : (
-              <p className="font-semibold text-muted-foreground italic">Nom non disponible</p>
-            )}
-          </div>
         </div>
-
-        {chemicalName && (
-          <div className="flex gap-3 pt-2">
-            <Badge variant="outline" className="text-base py-1 px-4">
-              {chemicalName}
-            </Badge>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
