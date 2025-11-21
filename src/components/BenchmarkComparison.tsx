@@ -26,7 +26,7 @@ export const BenchmarkComparison = () => {
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(isDarkMode());
-  const resizeTimeoutRef = useRef<number | null>(null);
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Use shared hooks
   const { casList, getChemicalName } = useCasList();

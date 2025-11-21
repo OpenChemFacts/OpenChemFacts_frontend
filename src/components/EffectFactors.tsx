@@ -106,8 +106,8 @@ export const EffectFactors = ({ cas }: EffectFactorsProps) => {
   
   parsedEffectFactors.slice(0, 3).forEach((factorItem) => {
     if (factorItem && typeof factorItem === 'object') {
-      const source = factorItem.Source || factorItem.source || '';
-      const ef = factorItem.EF !== undefined ? factorItem.EF : (factorItem.ef !== undefined ? factorItem.ef : null);
+      const source = factorItem.Source || '';
+      const ef = factorItem.EF !== undefined ? factorItem.EF : null;
       
       if (source) {
         sources.push({
