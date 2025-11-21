@@ -23,7 +23,7 @@ const Index = () => {
             OpenChemFacts
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Open data platform for ecotoxicity data visualization and scientific analysis
+          Accelerating chemical safety through open data
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-import { BookOpen, Mail } from "lucide-react";
+import { BookOpen, Mail, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Logo } from "@/components/Logo";
@@ -17,6 +17,17 @@ export const Header = () => {
                 Contact
               </Button>
             </Link>
+            
+            <a 
+              href="https://openchemfacts-api.osc-fr1.scalingo.io/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" className="gap-2 font-medium">
+                <Code className="h-4 w-4" />
+                API
+              </Button>
+            </a>
             
             <a 
               href="https://openchemfacts.gitbook.io/openchemfacts-docs/"
