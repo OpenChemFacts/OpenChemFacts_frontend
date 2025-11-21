@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { SearchBar, type ChemicalMetadata } from "@/components/SearchBar";
 import { ChemicalInfo } from "@/components/ChemicalInfo";
 import { EffectFactors } from "@/components/EffectFactors";
@@ -9,47 +8,16 @@ import { Header } from "@/components/Header";
 import { BenchmarkComparison } from "@/components/BenchmarkComparison";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { API_ENDPOINTS } from "@/lib/config";
-import { apiFetch } from "@/lib/api";
 import { useCasList } from "@/hooks/useCasList";
 
-interface SummaryData {
-  rows: number;
-  columns: number;
-  columns_names: string[];
-}
-
-interface ByColumnData {
-  column: string;
-  unique_values: any[];
-  count: number;
-}
 
 const Index = () => {
   const [selectedChemical, setSelectedChemical] = useState<ChemicalMetadata>({
     cas: "50-00-0",
   });
 
-  // Fetch summary statistics
-  const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
-    queryKey: ["summary"],
-    queryFn: () => apiFetch<SummaryData>(API_ENDPOINTS.SUMMARY),
-  });
-
   // Get CAS count (Chemicals available)
   const { count: casCount, isLoading: isCasListLoading } = useCasList();
-
-  // Get count of chemicals with EffectFactor(S) available
-  // We'll check the by_column endpoint for "EffectFactor(S)" or similar
-  const { data: effectFactorData, isLoading: isEffectFactorLoading } = useQuery({
-    queryKey: ["by-column", "EffectFactor(S)"],
-    queryFn: () => apiFetch<ByColumnData>(API_ENDPOINTS.BY_COLUMN("EffectFactor(S)")),
-    enabled: !!summaryData,
-  });
-
-  // Calculate effect factors count (substances that have effect factors)
-  // The count represents the number of substances with effect factors available
-  const effectFactorsCount = effectFactorData?.count || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,35 +38,13 @@ const Index = () => {
             <p className="text-sm font-medium text-foreground">
               🚧 Platform under development • Currently integrating a first dataset: Ecotox (US EPA)
             </p>
-          </div>
-        </div>
-
-        {/* Statistics from /summary endpoint */}
-        <div className="mb-8 max-w-4xl mx-auto">
-          <div className="rounded-lg border bg-card/50 px-6 py-4">
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-              {(isSummaryLoading || isCasListLoading || isEffectFactorLoading) ? (
-                <>
-                  <Skeleton className="h-6 w-40" />
-                  <Skeleton className="h-6 w-40" />
-                </>
+            <p className="text-sm font-medium text-foreground mt-2">
+              Chemicals available: {isCasListLoading ? (
+                <Skeleton className="inline-block h-4 w-16 align-middle" />
               ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Chemicals available:</span>
-                    <span className="font-semibold text-foreground">
-                      {casCount?.toLocaleString() || "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Effect factors available:</span>
-                    <span className="font-semibold text-foreground">
-                      {effectFactorsCount > 0 ? effectFactorsCount.toLocaleString() : "—"}
-                    </span>
-                  </div>
-                </>
+                <span className="font-semibold">{casCount?.toLocaleString() || "—"}</span>
               )}
-            </div>
+            </p>
           </div>
         </div>
 
