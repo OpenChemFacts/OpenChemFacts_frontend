@@ -38,12 +38,10 @@ const getApiBaseUrl = (): string => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
-// Debug log in development
-if (import.meta.env.DEV) {
-  console.log(`[API Config] Base URL: ${API_BASE_URL}`);
-  console.log(`[API Config] Environment: ${import.meta.env.MODE}`);
-  console.log(`[API Config] VITE_API_BASE_URL: ${import.meta.env.VITE_API_BASE_URL || 'not set'}`);
-}
+// Debug log in development and production (to help troubleshoot API issues)
+console.log(`[API Config] Base URL: ${API_BASE_URL}`);
+console.log(`[API Config] Environment: ${import.meta.env.MODE}`);
+console.log(`[API Config] VITE_API_BASE_URL: ${import.meta.env.VITE_API_BASE_URL || 'not set'}`);
 
 export const API_ENDPOINTS = {
   ROOT: '/',
