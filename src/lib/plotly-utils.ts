@@ -228,10 +228,9 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
     // Font - merge with theme font color while preserving backend font settings
     font: originalLayout.font
       ? { 
+          ...originalLayout.font,
           size: originalLayout.font.size || 12, 
           color: themeColors.font.color, // Always use theme color for consistency
-          ...originalLayout.font,
-          color: themeColors.font.color, // Ensure theme color is applied
         }
       : { size: 12, color: themeColors.font.color },
     
@@ -255,10 +254,9 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
             ? {
                 tickangle: originalLayout.xaxis.tickangle ?? -45,
                 tickfont: {
+                  ...originalLayout.xaxis.tickfont,
                   size: originalLayout.xaxis.tickfont?.size ?? 10,
                   color: themeColors.font.color,
-                  ...originalLayout.xaxis.tickfont,
-                  color: themeColors.font.color, // Ensure theme color
                 },
                 // Preserve backend category settings
                 categoryorder: originalLayout.xaxis.categoryorder || 'category ascending',
@@ -350,18 +348,13 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
  */
 export const createPlotlyConfig = (customConfig?: any) => {
   return {
-    // Responsive design - essential for mobile/tablet
-    responsive: true,
-    // Show mode bar for user interaction (zoom, pan, etc.)
-    displayModeBar: true,
-    // Remove Plotly logo for cleaner UI
-    displaylogo: false,
-    // Remove tools that are less useful for scientific charts
-    modeBarButtonsToRemove: ["lasso2d", "select2d"],
-    // Preserve backend config but ensure our defaults
+    // Preserve backend config first
     ...(customConfig || {}),
-    // Override to ensure responsive is always true
-    responsive: true,
+    // Override with our UI best practices
+    responsive: true, // Responsive design - essential for mobile/tablet
+    displayModeBar: true, // Show mode bar for user interaction (zoom, pan, etc.)
+    displaylogo: false, // Remove Plotly logo for cleaner UI
+    modeBarButtonsToRemove: ["lasso2d", "select2d"], // Remove tools that are less useful for scientific charts
   };
 };
 

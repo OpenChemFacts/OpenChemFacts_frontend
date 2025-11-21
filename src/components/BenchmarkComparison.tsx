@@ -26,7 +26,7 @@ export const BenchmarkComparison = () => {
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(isDarkMode());
-  const resizeTimeoutRef = useRef<number | null>(null);
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Use shared hooks
   const { casList, getChemicalName } = useCasList();
@@ -337,6 +337,7 @@ export const BenchmarkComparison = () => {
         ) : error ? (
           <ErrorDisplay error={error} />
         ) : (
+<<<<<<< HEAD
           <div 
             ref={plotRef} 
             className="w-full"
@@ -345,6 +346,9 @@ export const BenchmarkComparison = () => {
               height: 'clamp(400px, 60vh, 800px)',
             }}
           />
+=======
+          <div ref={plotRef} className="w-full h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px] xl:h-[900px]" />
+>>>>>>> 09019fd02294104ceb637f6ffa8232eafcdbfc16
         )}
       </CardContent>
     </Card>

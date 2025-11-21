@@ -26,7 +26,7 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const plotRef = useRef<HTMLDivElement>(null);
   const { plotlyLoaded, Plotly } = usePlotly();
   const [darkMode, setDarkMode] = useState(isDarkMode());
-  const resizeTimeoutRef = useRef<number | null>(null);
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const endpoint = type === "ssd" 
     ? API_ENDPOINTS.SSD_PLOT(cas)
@@ -228,14 +228,18 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 sm:p-4">
         <div 
           ref={plotRef} 
+<<<<<<< HEAD
           className="w-full"
           style={{
             minHeight: '400px',
             height: 'clamp(400px, 60vh, 800px)',
           }}
+=======
+          className={`w-full ${type === 'ec10eq' ? 'h-[600px] sm:h-[700px] md:h-[800px] lg:h-[900px]' : 'h-[500px] sm:h-[600px] md:h-[700px] lg:h-[800px]'}`}
+>>>>>>> 09019fd02294104ceb637f6ffa8232eafcdbfc16
         />
       </CardContent>
     </Card>
