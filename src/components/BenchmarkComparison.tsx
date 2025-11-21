@@ -337,7 +337,14 @@ export const BenchmarkComparison = () => {
         ) : error ? (
           <ErrorDisplay error={error} />
         ) : (
-          <div ref={plotRef} className="w-full min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[700px]" />
+          <div 
+            ref={plotRef} 
+            className="w-full"
+            style={{
+              minHeight: '400px',
+              height: 'clamp(400px, 60vh, 800px)',
+            }}
+          />
         )}
       </CardContent>
     </Card>
