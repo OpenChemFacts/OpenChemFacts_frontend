@@ -115,11 +115,40 @@ export const BenchmarkComparison = () => {
           // Create configuration - respects backend config while ensuring UI best practices
           const plotConfig = createPlotlyConfig(plotData.config);
 
-          // Render the chart with processed traces
-          Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig);
+          // Ensure container is visible before rendering
+          if (plotRef.current && plotRef.current.offsetWidth > 0 && plotRef.current.offsetHeight > 0) {
+            Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig)
+              .then(() => {
+                // Force a redraw after a short delay to ensure proper sizing
+                setTimeout(() => {
+                  if (plotRef.current && Plotly) {
+                    Plotly.Plots.resize(plotRef.current);
+                  }
+                }, 100);
+              })
+              .catch((err: any) => {
+                console.error('[BenchmarkComparison] Error during Plotly.newPlot:', err);
+              });
+          } else {
+            // Wait for container to be ready
+            const containerCheckInterval = setInterval(() => {
+              if (plotRef.current && plotRef.current.offsetWidth > 0 && plotRef.current.offsetHeight > 0) {
+                clearInterval(containerCheckInterval);
+                Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig)
+                  .catch((err: any) => {
+                    console.error('[BenchmarkComparison] Error during Plotly.newPlot:', err);
+                  });
+              }
+            }, 100);
+            
+            // Stop after 5 seconds
+            setTimeout(() => {
+              clearInterval(containerCheckInterval);
+            }, 5000);
+          }
 
-          // Handle resizing with debounce
-          const resizeHandler = () => {
+          // Handle resizing with debounce - both window and container resize
+          const handleResize = () => {
             if (resizeTimeoutRef.current) {
               clearTimeout(resizeTimeoutRef.current);
             }
@@ -129,10 +158,25 @@ export const BenchmarkComparison = () => {
               }
             }, 150);
           };
-          window.addEventListener("resize", resizeHandler);
+          
+          // Listen to window resize
+          window.addEventListener("resize", handleResize);
+          
+          // Listen to container resize using ResizeObserver for better responsiveness
+          let resizeObserver: ResizeObserver | null = null;
+          if (plotRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(() => {
+              handleResize();
+            });
+            resizeObserver.observe(plotRef.current);
+          }
           
           return () => {
-            window.removeEventListener("resize", resizeHandler);
+            window.removeEventListener("resize", handleResize);
+            if (resizeObserver && plotRef.current) {
+              resizeObserver.unobserve(plotRef.current);
+              resizeObserver.disconnect();
+            }
             if (resizeTimeoutRef.current) {
               clearTimeout(resizeTimeoutRef.current);
             }

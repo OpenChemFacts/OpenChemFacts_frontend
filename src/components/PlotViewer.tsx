@@ -134,8 +134,8 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
             }, 5000);
           }
 
-          // Handle resizing with debounce
-          const resizeHandler = () => {
+          // Handle resizing with debounce - both window and container resize
+          const handleResize = () => {
             if (resizeTimeoutRef.current) {
               clearTimeout(resizeTimeoutRef.current);
             }
@@ -145,10 +145,25 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
               }
             }, 150);
           };
-          window.addEventListener("resize", resizeHandler);
+          
+          // Listen to window resize
+          window.addEventListener("resize", handleResize);
+          
+          // Listen to container resize using ResizeObserver for better responsiveness
+          let resizeObserver: ResizeObserver | null = null;
+          if (plotRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(() => {
+              handleResize();
+            });
+            resizeObserver.observe(plotRef.current);
+          }
           
           return () => {
-            window.removeEventListener("resize", resizeHandler);
+            window.removeEventListener("resize", handleResize);
+            if (resizeObserver && plotRef.current) {
+              resizeObserver.unobserve(plotRef.current);
+              resizeObserver.disconnect();
+            }
             if (resizeTimeoutRef.current) {
               clearTimeout(resizeTimeoutRef.current);
             }
