@@ -8,11 +8,11 @@ export interface CasItem {
   chemical_name?: string;
 }
 
-interface CasListResponse {
-  count: number;
-  cas_numbers: string[];
-  cas_with_names: Record<string, string> | Array<{ cas_number: string; chemical_name?: string }>;
-}
+/**
+ * Format réel retourné par l'API /cas/list
+ * L'API retourne directement un tableau d'objets avec cas_number et name
+ */
+type CasListResponse = Array<{ cas_number: string; name?: string }>;
 
 /**
  * Custom hook to load and manage the CAS list
@@ -29,18 +29,13 @@ export const useCasList = () => {
     retry: false,
   });
 
-  // Convert data to array format for easier use
-  const casList: CasItem[] = casListResponse?.cas_with_names
-    ? Array.isArray(casListResponse.cas_with_names)
-      ? casListResponse.cas_with_names.map((item: any) => ({
-          cas_number: item.cas_number || item,
-          chemical_name: item.chemical_name,
-        }))
-      : Object.entries(casListResponse.cas_with_names as Record<string, string>).map(
-          ([cas_number, chemical_name]) => ({ cas_number, chemical_name })
-        )
-    : casListResponse?.cas_numbers
-    ? casListResponse.cas_numbers.map((cas) => ({ cas_number: cas }))
+  // Convert API response (Array<{cas_number, name}>) to internal format (Array<{cas_number, chemical_name}>)
+  // L'API utilise 'name' mais le code interne utilise 'chemical_name' pour cohérence
+  const casList: CasItem[] = casListResponse
+    ? casListResponse.map((item) => ({
+        cas_number: item.cas_number,
+        chemical_name: item.name,
+      }))
     : [];
 
   /**
@@ -64,9 +59,13 @@ export const useCasList = () => {
     return item?.chemical_name;
   };
 
+  // Calculate count from the list
+  const count = casList.length;
+
   return {
     casList,
     casListResponse,
+    count,
     isLoading,
     error: error instanceof ApiError ? error : undefined,
     findCasItem,

@@ -34,7 +34,7 @@ export const StatsOverview = () => {
   });
 
   // Use the shared hook for CAS list
-  const { casListResponse, error: casListError } = useCasList();
+  const { count, error: casListError } = useCasList();
 
   // Get unique species count
   const { data: speciesData } = useQuery({
@@ -54,13 +54,13 @@ export const StatsOverview = () => {
   const data: Stats | undefined = summaryData
     ? {
         total_records: summaryData.rows,
-        unique_chemicals: casListResponse?.count || 0,
+        unique_chemicals: count || 0,
         unique_species: speciesData?.count || 0,
         unique_taxa: taxaData?.count || 0,
       }
     : undefined;
 
-  const isLoading = !summaryData || !casListResponse;
+  const isLoading = !summaryData || count === undefined;
   const error = summaryError || casListError;
 
   const statsCards = [

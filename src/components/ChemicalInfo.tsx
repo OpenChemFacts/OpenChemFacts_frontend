@@ -14,9 +14,13 @@ interface ChemicalInfoProps {
   chemical_name?: string;
 }
 
+/**
+ * Format réel retourné par l'API /cas/{cas}
+ * L'API utilise 'name' pour le nom chimique, pas 'chemical_name'
+ */
 interface CasInfoResponse {
   cas_number?: string;
-  chemical_name?: string;
+  name?: string; // L'API utilise 'name', pas 'chemical_name'
   n_species?: number;
   n_trophic_level?: number;
   n_results?: number;
@@ -62,9 +66,10 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
   
   // Systematically retrieve the chemical name if not already provided in props
   useEffect(() => {
-    // Priority: casInfo > propChemicalName > casList
-    if (casInfo?.chemical_name) {
-      setChemicalName(casInfo.chemical_name);
+    // Priority: casInfo.name (API format) > propChemicalName > casList
+    // L'API utilise 'name' mais on le convertit en 'chemical_name' pour cohérence interne
+    if (casInfo?.name) {
+      setChemicalName(casInfo.name);
     } else if (propChemicalName) {
       setChemicalName(propChemicalName);
     } else if (normalizedCas && casList.length > 0) {
@@ -115,8 +120,9 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
 
 
   // Use data from casInfo endpoint if available, otherwise fallback to basic info
+  // L'API utilise 'name' mais on le convertit pour l'affichage
   const displayCasNumber = casInfo?.cas_number || normalizedCas;
-  const displayChemicalName = casInfo?.chemical_name || chemicalName;
+  const displayChemicalName = casInfo?.name || chemicalName;
 
   return (
     <Card className="shadow-card">
@@ -147,7 +153,8 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
         {/* Display additional information from /api/cas/{cas} endpoint */}
         {casInfo && (() => {
           // Get all additional fields from the API response (excluding already displayed fields)
-          const excludedFields = ['cas_number', 'chemical_name'];
+          // L'API utilise 'name' pour le nom chimique
+          const excludedFields = ['cas_number', 'name'];
           const additionalFields = Object.keys(casInfo).filter(
             key => !excludedFields.includes(key) && casInfo[key] !== undefined && casInfo[key] !== null
           );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SearchBar, type ChemicalMetadata } from "@/components/SearchBar";
 import { ChemicalInfo } from "@/components/ChemicalInfo";
+import { EffectFactors } from "@/components/EffectFactors";
 import { PlotViewer } from "@/components/PlotViewer";
 import { StatsOverview } from "@/components/StatsOverview";
 import { Header } from "@/components/Header";
@@ -45,6 +46,8 @@ const Index = () => {
                 cas={selectedChemical.cas} 
                 chemical_name={selectedChemical.chemical_name}
               />
+              
+              <EffectFactors cas={selectedChemical.cas} />
               
               <Tabs defaultValue="ssd" className="w-full">
                 <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
