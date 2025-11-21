@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorDisplay } from "@/components/ui/error-display";
@@ -159,6 +159,9 @@ export const EffectFactors = ({ cas }: EffectFactorsProps) => {
             <Activity className="h-5 w-5 text-primary" />
             Effect Factors
           </CardTitle>
+          <CardDescription className="text-sm mt-2">
+            Large variations (×2 to ×100) in aquatic ecotoxicity effect factors are common and reflect natural biological and methodological variability.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ErrorDisplay 
@@ -179,6 +182,9 @@ export const EffectFactors = ({ cas }: EffectFactorsProps) => {
             <Activity className="h-5 w-5 text-primary" />
             Effect Factors
           </CardTitle>
+          <CardDescription className="text-sm mt-2">
+            Large variations (×2 to ×100) in aquatic ecotoxicity effect factors are common and reflect natural biological and methodological variability.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground text-center py-4">
@@ -202,6 +208,9 @@ export const EffectFactors = ({ cas }: EffectFactorsProps) => {
             {displaySources.length}
           </Badge>
         </CardTitle>
+        <CardDescription className="text-sm mt-2">
+          Large variations (×2 to ×100) in aquatic ecotoxicity effect factors are common and reflect natural biological and methodological variability.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-lg border bg-muted/50 p-4 hover:bg-muted/70 transition-colors">
