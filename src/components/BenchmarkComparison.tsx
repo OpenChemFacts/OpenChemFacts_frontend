@@ -15,6 +15,7 @@ import {
   processPlotlyTraces,
   createEnhancedLayout,
   createPlotlyConfig,
+  isDarkMode,
 } from "@/lib/plotly-utils";
 import { ErrorDisplay } from "@/components/ui/error-display";
 
@@ -23,21 +24,67 @@ export const BenchmarkComparison = () => {
   const [searchTerms, setSearchTerms] = useState<string[]>(["", "", ""]);
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
+  const [darkMode, setDarkMode] = useState(isDarkMode());
+  const resizeTimeoutRef = useRef<number | null>(null);
 
   // Use shared hooks
   const { casList, getChemicalName } = useCasList();
   const { plotlyLoaded, Plotly } = usePlotly();
 
+  // Monitor theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const newDarkMode = isDarkMode();
+      if (newDarkMode !== darkMode) {
+        setDarkMode(newDarkMode);
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, [darkMode]);
+
   // Fetch comparison plot when we have 2-3 substances selected
   const { data: plotData, isLoading, error } = useQuery({
     queryKey: ["ssd-comparison", selectedCas],
     queryFn: async () => {
-      return apiFetch<PlotlyData>(API_ENDPOINTS.SSD_COMPARISON, {
-        method: "POST",
-        body: JSON.stringify({ cas_list: selectedCas }),
-      });
+      // Normalize all CAS numbers before sending to API
+      const normalizedCasList = selectedCas.map(cas => normalizeCas(cas));
+      
+      if (import.meta.env.DEV) {
+        console.log("[BenchmarkComparison] Sending CAS list to API:", normalizedCasList);
+        console.log("[BenchmarkComparison] Request body:", JSON.stringify({ cas_list: normalizedCasList }));
+      }
+      
+      try {
+        const response = await apiFetch<PlotlyData>(API_ENDPOINTS.SSD_COMPARISON, {
+          method: "POST",
+          body: JSON.stringify({ cas_list: normalizedCasList }),
+        });
+        
+        if (import.meta.env.DEV) {
+          console.log("[BenchmarkComparison] API response received:", response);
+        }
+        
+        return response;
+      } catch (apiError) {
+        if (import.meta.env.DEV) {
+          console.error("[BenchmarkComparison] API error details:", apiError);
+        }
+        throw apiError;
+      }
     },
     enabled: selectedCas.length >= 2 && selectedCas.length <= 3,
+    retry: false, // Don't retry on error to avoid spamming the API
   });
 
   // Render Plotly chart
@@ -52,10 +99,11 @@ export const BenchmarkComparison = () => {
           // Clean existing chart before creating a new one
           Plotly.purge(plotRef.current);
 
-          // Create enhanced layout
+          // Create enhanced layout with theme support
           const enhancedLayout = createEnhancedLayout({
             type: 'comparison',
             originalLayout: plotData.layout,
+            isDarkMode: darkMode,
           });
 
           // Create configuration
@@ -64,16 +112,24 @@ export const BenchmarkComparison = () => {
           // Render the chart
           Plotly.newPlot(plotRef.current, processedTraces, enhancedLayout, plotConfig);
 
-          // Handle resizing
+          // Handle resizing with debounce
           const resizeHandler = () => {
-            if (plotRef.current && Plotly) {
-              Plotly.Plots.resize(plotRef.current);
+            if (resizeTimeoutRef.current) {
+              clearTimeout(resizeTimeoutRef.current);
             }
+            resizeTimeoutRef.current = setTimeout(() => {
+              if (plotRef.current && Plotly) {
+                Plotly.Plots.resize(plotRef.current);
+              }
+            }, 150);
           };
           window.addEventListener("resize", resizeHandler);
           
           return () => {
             window.removeEventListener("resize", resizeHandler);
+            if (resizeTimeoutRef.current) {
+              clearTimeout(resizeTimeoutRef.current);
+            }
             if (plotRef.current && Plotly) {
               Plotly.purge(plotRef.current);
             }
@@ -85,7 +141,33 @@ export const BenchmarkComparison = () => {
         console.error("[BenchmarkComparison] Error rendering Plotly chart:", plotError);
       }
     }
-  }, [plotData, plotlyLoaded, Plotly]);
+  }, [plotData, plotlyLoaded, Plotly, darkMode]);
+
+  // Redraw chart when theme changes
+  useEffect(() => {
+    if (plotData && plotRef.current && plotlyLoaded && Plotly) {
+      try {
+        if (plotData.data && plotData.layout) {
+          const processedTraces = processPlotlyTraces(plotData.data || []);
+          if (processedTraces.length > 0) {
+            const enhancedLayout = createEnhancedLayout({
+              type: 'comparison',
+              originalLayout: plotData.layout,
+              isDarkMode: darkMode,
+            });
+            const plotConfig = createPlotlyConfig(plotData.config);
+            
+            Plotly.redraw(plotRef.current).catch(() => {
+              // If redraw fails, do a full replot
+              Plotly.newPlot(plotRef.current, processedTraces, enhancedLayout, plotConfig);
+            });
+          }
+        }
+      } catch (error) {
+        console.error("[BenchmarkComparison] Error redrawing chart on theme change:", error);
+      }
+    }
+  }, [darkMode, plotData, plotlyLoaded, Plotly]);
 
   const getFilteredSuggestions = (index: number) => {
     const term = searchTerms[index];
@@ -113,7 +195,9 @@ export const BenchmarkComparison = () => {
       toast.error("Maximum 3 substances for comparison");
       return;
     }
-    setSelectedCas([...selectedCas, cas]);
+    // Normalize CAS number before adding
+    const normalizedCas = normalizeCas(cas);
+    setSelectedCas([...selectedCas, normalizedCas]);
     setSearchTerms((prev) => {
       const newTerms = [...prev];
       newTerms[index] = "";
@@ -244,7 +328,7 @@ export const BenchmarkComparison = () => {
         ) : error ? (
           <ErrorDisplay error={error} />
         ) : (
-          <div ref={plotRef} className="w-full min-h-[600px] lg:min-h-[700px]" />
+          <div ref={plotRef} className="w-full min-h-[400px] sm:min-h-[500px] md:min-h-[600px] lg:min-h-[700px]" />
         )}
       </CardContent>
     </Card>

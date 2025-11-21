@@ -83,7 +83,45 @@ export interface EnhancedLayoutOptions {
   type?: 'ssd' | 'ec10eq' | 'comparison';
   /** Original layout to enhance */
   originalLayout: any;
+  /** Whether dark mode is active */
+  isDarkMode?: boolean;
 }
+
+/**
+ * Detects if dark mode is active
+ * @returns true if dark mode is active
+ */
+export const isDarkMode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return document.documentElement.classList.contains('dark') ||
+         document.body.classList.contains('dark') ||
+         window.matchMedia('(prefers-color-scheme: dark)').matches;
+};
+
+/**
+ * Gets theme colors for Plotly based on dark/light mode
+ * @param dark - Whether dark mode is active
+ * @returns Theme colors object
+ */
+export const getPlotlyThemeColors = (dark: boolean) => {
+  if (dark) {
+    return {
+      paper_bgcolor: 'hsl(215, 25%, 12%)', // card background
+      plot_bgcolor: 'hsl(215, 30%, 8%)',   // background
+      font: { color: 'hsl(210, 20%, 95%)' }, // foreground
+      gridcolor: 'hsl(215, 20%, 22%)',     // border
+      linecolor: 'hsl(215, 20%, 22%)',     // border
+    };
+  } else {
+    return {
+      paper_bgcolor: 'hsl(0, 0%, 100%)',   // card background
+      plot_bgcolor: 'hsl(0, 0%, 100%)',    // background
+      font: { color: 'hsl(220, 15%, 20%)' }, // foreground
+      gridcolor: 'hsl(220, 13%, 91%)',     // border
+      linecolor: 'hsl(220, 13%, 91%)',     // border
+    };
+  }
+};
 
 /**
  * Creates an enhanced Plotly layout while preserving all original properties
@@ -92,6 +130,8 @@ export interface EnhancedLayoutOptions {
  */
 export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
   const { type = 'ssd', originalLayout } = options;
+  const dark = options.isDarkMode ?? isDarkMode();
+  const themeColors = getPlotlyThemeColors(dark);
   
   // Base margins according to type
   const baseMargin = type === 'ec10eq'
@@ -116,6 +156,10 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
     // Preserve ALL elements from the original layout
     ...originalLayout,
     
+    // Theme colors - apply only if not already set in original layout
+    ...(originalLayout.paper_bgcolor ? {} : { paper_bgcolor: themeColors.paper_bgcolor }),
+    ...(originalLayout.plot_bgcolor ? {} : { plot_bgcolor: themeColors.plot_bgcolor }),
+    
     // Display improvements
     autosize: originalLayout.autosize ?? true,
     showlegend: originalLayout.showlegend !== false,
@@ -129,21 +173,25 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
       ? { ...baseMargin, ...originalLayout.margin }
       : baseMargin,
     
-    // Font
+    // Font - merge with theme font color
     font: originalLayout.font
-      ? { size: 12, ...originalLayout.font }
-      : { size: 12 },
+      ? { size: 12, color: themeColors.font.color, ...originalLayout.font }
+      : { size: 12, color: themeColors.font.color },
     
     // Main X axis
     xaxis: originalLayout.xaxis
       ? {
           ...originalLayout.xaxis,
           automargin: originalLayout.xaxis.automargin ?? true,
+          gridcolor: originalLayout.xaxis.gridcolor ?? themeColors.gridcolor,
+          linecolor: originalLayout.xaxis.linecolor ?? themeColors.linecolor,
+          ...(originalLayout.xaxis.tickfont ? {} : { tickfont: { color: themeColors.font.color } }),
           ...(type === 'ec10eq'
             ? {
                 tickangle: originalLayout.xaxis.tickangle ?? -45,
                 tickfont: {
                   size: originalLayout.xaxis.tickfont?.size ?? 10,
+                  color: originalLayout.xaxis.tickfont?.color ?? themeColors.font.color,
                   ...originalLayout.xaxis.tickfont,
                 },
                 categoryorder: originalLayout.xaxis.categoryorder || 'category ascending',
@@ -153,7 +201,10 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
         }
       : {
           automargin: true,
-          ...(type === 'ec10eq' ? { tickangle: -45, tickfont: { size: 10 } } : {}),
+          gridcolor: themeColors.gridcolor,
+          linecolor: themeColors.linecolor,
+          tickfont: { color: themeColors.font.color },
+          ...(type === 'ec10eq' ? { tickangle: -45, tickfont: { size: 10, color: themeColors.font.color } } : {}),
         },
     
     // Main Y axis
@@ -161,9 +212,15 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
       ? {
           ...originalLayout.yaxis,
           automargin: originalLayout.yaxis.automargin ?? true,
+          gridcolor: originalLayout.yaxis.gridcolor ?? themeColors.gridcolor,
+          linecolor: originalLayout.yaxis.linecolor ?? themeColors.linecolor,
+          ...(originalLayout.yaxis.tickfont ? {} : { tickfont: { color: themeColors.font.color } }),
         }
       : {
           automargin: true,
+          gridcolor: themeColors.gridcolor,
+          linecolor: themeColors.linecolor,
+          tickfont: { color: themeColors.font.color },
         },
     
     // Legend
@@ -176,9 +233,11 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
           xanchor: originalLayout.legend.xanchor ?? 'left',
           yanchor: originalLayout.legend.yanchor ?? 'top',
           visible: originalLayout.legend.visible !== false,
+          bgcolor: originalLayout.legend.bgcolor ?? 'rgba(0,0,0,0)',
+          bordercolor: originalLayout.legend.bordercolor ?? themeColors.linecolor,
           font: originalLayout.legend.font
-            ? { size: 11, ...originalLayout.legend.font }
-            : { size: 11 },
+            ? { size: 11, color: themeColors.font.color, ...originalLayout.legend.font }
+            : { size: 11, color: themeColors.font.color },
         }
       : {
           orientation: 'v',
@@ -187,7 +246,9 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
           xanchor: 'left',
           yanchor: 'top',
           visible: true,
-          font: { size: 11 },
+          bgcolor: 'rgba(0,0,0,0)',
+          bordercolor: themeColors.linecolor,
+          font: { size: 11, color: themeColors.font.color },
         },
     
     // Ajouter les axes secondaires

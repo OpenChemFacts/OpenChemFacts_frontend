@@ -50,11 +50,15 @@ export const API_ENDPOINTS = {
   /**
    * SSD plot endpoint for a CAS number or identifier
    * @param identifier - CAS number or other identifier
+   * 
+   * NOTE: This endpoint has evolved - check API documentation for latest changes
    */
   SSD_PLOT: (identifier: string) => `/plot/ssd/${identifier}`,
   /**
    * EC10 equivalent plot endpoint for a CAS number or identifier
    * @param identifier - CAS number or other identifier
+   * 
+   * NOTE: TEMPORARILY DISABLED - This endpoint is temporarily disabled
    */
   EC10EQ_PLOT: (identifier: string) => `/plot/ec10eq/${identifier}`,
   /**
@@ -68,6 +72,8 @@ export const API_ENDPOINTS = {
    * - JSON Body: { "cas_list": ["123-45-6", "789-01-2", "345-67-8"] }
    * - Maximum 3 CAS numbers in the list
    * - Returns: Plotly figure in JSON format (fig.to_dict())
+   * 
+   * NOTE: This endpoint has evolved - check API documentation for latest changes
    */
   SSD_COMPARISON: '/plot/ssd/comparison',
 };

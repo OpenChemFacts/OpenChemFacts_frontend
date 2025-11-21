@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,7 @@ import {
   createPlotlyConfig,
   validatePlotlyTraces,
   enhanceEC10eqTraces,
+  isDarkMode,
 } from "@/lib/plotly-utils";
 import { ErrorDisplay } from "@/components/ui/error-display";
 
@@ -24,6 +25,8 @@ interface PlotViewerProps {
 export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const plotRef = useRef<HTMLDivElement>(null);
   const { plotlyLoaded, Plotly } = usePlotly();
+  const [darkMode, setDarkMode] = useState(isDarkMode());
+  const resizeTimeoutRef = useRef<number | null>(null);
 
   const endpoint = type === "ssd" 
     ? API_ENDPOINTS.SSD_PLOT(cas)
@@ -35,8 +38,31 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ["plot", cas, type],
     queryFn: () => apiFetch<PlotlyData>(endpoint),
-    enabled: !!cas,
+    // NOTE: Temporarily disable EC10EQ endpoint
+    enabled: !!cas && type !== "ec10eq",
   });
+
+  // Monitor theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const newDarkMode = isDarkMode();
+      if (newDarkMode !== darkMode) {
+        setDarkMode(newDarkMode);
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, [darkMode]);
 
   // Render Plotly chart
   useEffect(() => {
@@ -59,10 +85,11 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
           const validTraces = validatePlotlyTraces(processedTraces);
           const tracesToRender = validTraces.length > 0 ? validTraces : processedTraces;
 
-          // Create enhanced layout
+          // Create enhanced layout with theme support
           const enhancedLayout = createEnhancedLayout({
             type,
             originalLayout: data.layout,
+            isDarkMode: darkMode,
           });
 
           // Create configuration
@@ -100,16 +127,24 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
             }, 5000);
           }
 
-          // Handle resizing
+          // Handle resizing with debounce
           const resizeHandler = () => {
-            if (plotRef.current && Plotly) {
-              Plotly.Plots.resize(plotRef.current);
+            if (resizeTimeoutRef.current) {
+              clearTimeout(resizeTimeoutRef.current);
             }
+            resizeTimeoutRef.current = setTimeout(() => {
+              if (plotRef.current && Plotly) {
+                Plotly.Plots.resize(plotRef.current);
+              }
+            }, 150);
           };
           window.addEventListener("resize", resizeHandler);
           
           return () => {
             window.removeEventListener("resize", resizeHandler);
+            if (resizeTimeoutRef.current) {
+              clearTimeout(resizeTimeoutRef.current);
+            }
             if (plotRef.current && Plotly) {
               Plotly.purge(plotRef.current);
             }
@@ -121,7 +156,36 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
         console.error("[PlotViewer] Error rendering Plotly chart:", plotError);
       }
     }
-  }, [data, plotlyLoaded, Plotly, type]);
+  }, [data, plotlyLoaded, Plotly, type, darkMode]);
+
+  // Redraw chart when theme changes
+  useEffect(() => {
+    if (data && plotRef.current && plotlyLoaded && Plotly) {
+      try {
+        if (data.data && data.layout) {
+          let processedTraces = processPlotlyTraces(data.data || []);
+          if (type === 'ec10eq') {
+            processedTraces = enhanceEC10eqTraces(processedTraces);
+          }
+          const validTraces = validatePlotlyTraces(processedTraces);
+          const tracesToRender = validTraces.length > 0 ? validTraces : processedTraces;
+          const enhancedLayout = createEnhancedLayout({
+            type,
+            originalLayout: data.layout,
+            isDarkMode: darkMode,
+          });
+          const plotConfig = createPlotlyConfig(data.config);
+          
+          Plotly.redraw(plotRef.current).catch(() => {
+            // If redraw fails, do a full replot
+            Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig);
+          });
+        }
+      } catch (error) {
+        console.error("[PlotViewer] Error redrawing chart on theme change:", error);
+      }
+    }
+  }, [darkMode, data, plotlyLoaded, Plotly, type]);
 
   if (error) {
     return (
@@ -160,7 +224,7 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
       <CardContent>
         <div 
           ref={plotRef} 
-          className={`w-full ${type === 'ec10eq' ? 'h-[600px] md:h-[700px]' : 'h-[500px] md:h-[600px]'}`}
+          className={`w-full ${type === 'ec10eq' ? 'h-[500px] sm:h-[600px] md:h-[700px]' : 'h-[400px] sm:h-[500px] md:h-[600px]'}`}
         />
       </CardContent>
     </Card>
