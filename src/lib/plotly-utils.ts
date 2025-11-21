@@ -100,25 +100,30 @@ export const isDarkMode = (): boolean => {
 
 /**
  * Gets theme colors for Plotly based on dark/light mode
- * @param dark - Whether dark mode is active
+ * NOTE: Graphs always use light background for better readability
+ * @param dark - Whether dark mode is active (used for font colors only)
  * @returns Theme colors object
  */
 export const getPlotlyThemeColors = (dark: boolean) => {
+  // Always use light background for graphs
+  const lightBackground = 'hsl(0, 0%, 100%)';
+  const lightGridColor = 'hsl(220, 13%, 91%)';
+  
   if (dark) {
     return {
-      paper_bgcolor: 'hsl(215, 25%, 12%)', // card background
-      plot_bgcolor: 'hsl(215, 30%, 8%)',   // background
-      font: { color: 'hsl(210, 20%, 95%)' }, // foreground
-      gridcolor: 'hsl(215, 20%, 22%)',     // border
-      linecolor: 'hsl(215, 20%, 22%)',     // border
+      paper_bgcolor: lightBackground,     // Always light background
+      plot_bgcolor: lightBackground,      // Always light background
+      font: { color: 'hsl(220, 15%, 20%)' }, // Dark text for contrast on light bg
+      gridcolor: lightGridColor,           // Light grid
+      linecolor: lightGridColor,           // Light lines
     };
   } else {
     return {
-      paper_bgcolor: 'hsl(0, 0%, 100%)',   // card background
-      plot_bgcolor: 'hsl(0, 0%, 100%)',    // background
-      font: { color: 'hsl(220, 15%, 20%)' }, // foreground
-      gridcolor: 'hsl(220, 13%, 91%)',     // border
-      linecolor: 'hsl(220, 13%, 91%)',     // border
+      paper_bgcolor: lightBackground,      // Light background
+      plot_bgcolor: lightBackground,       // Light background
+      font: { color: 'hsl(220, 15%, 20%)' }, // Dark text
+      gridcolor: lightGridColor,           // Light grid
+      linecolor: lightGridColor,           // Light lines
     };
   }
 };
@@ -134,11 +139,12 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
   const themeColors = getPlotlyThemeColors(dark);
   
   // Base margins according to type
+  // Increased right margin to prevent legend from overlapping with x-axis labels
   const baseMargin = type === 'ec10eq'
-    ? { l: 100, r: 150, t: 120, b: 200, pad: 15 }
+    ? { l: 100, r: 180, t: 120, b: 200, pad: 15 }  // Increased r from 150 to 180
     : type === 'comparison'
-    ? { l: 60, r: 100, t: 120, b: 80, pad: 10 }
-    : { l: 80, r: 120, t: 100, b: 120, pad: 10 };
+    ? { l: 60, r: 140, t: 120, b: 80, pad: 10 }    // Increased r from 100 to 140
+    : { l: 80, r: 160, t: 100, b: 120, pad: 10 };  // Increased r from 120 to 160
   
   // Preserve all secondary axes (xaxis2, yaxis2, xaxis3, etc.)
   const secondaryAxes = Object.keys(originalLayout)
@@ -223,13 +229,14 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
           tickfont: { color: themeColors.font.color },
         },
     
-    // Legend
+    // Legend - positioned to avoid overlapping with x-axis
     legend: originalLayout.legend
       ? {
           ...originalLayout.legend,
           orientation: originalLayout.legend.orientation ?? 'v',
-          x: originalLayout.legend.x ?? 1.02,
-          y: originalLayout.legend.y ?? 1,
+          // Position legend further right and higher to avoid x-axis overlap
+          x: originalLayout.legend.x ?? (type === 'comparison' ? 1.05 : 1.08),
+          y: originalLayout.legend.y ?? (type === 'comparison' ? 0.98 : 1),
           xanchor: originalLayout.legend.xanchor ?? 'left',
           yanchor: originalLayout.legend.yanchor ?? 'top',
           visible: originalLayout.legend.visible !== false,
@@ -241,8 +248,9 @@ export const createEnhancedLayout = (options: EnhancedLayoutOptions): any => {
         }
       : {
           orientation: 'v',
-          x: 1.02,
-          y: 1,
+          // Position legend further right and higher to avoid x-axis overlap
+          x: type === 'comparison' ? 1.05 : 1.08,
+          y: type === 'comparison' ? 0.98 : 1,
           xanchor: 'left',
           yanchor: 'top',
           visible: true,
