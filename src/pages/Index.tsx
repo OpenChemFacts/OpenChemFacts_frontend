@@ -19,6 +19,12 @@ interface SummaryData {
   columns_names: string[];
 }
 
+interface ByColumnData {
+  column: string;
+  unique_values: any[];
+  count: number;
+}
+
 const Index = () => {
   const [selectedChemical, setSelectedChemical] = useState<ChemicalMetadata>({
     cas: "50-00-0",
@@ -30,8 +36,20 @@ const Index = () => {
     queryFn: () => apiFetch<SummaryData>(API_ENDPOINTS.SUMMARY),
   });
 
-  // Get CAS count
-  const { count: casCount } = useCasList();
+  // Get CAS count (Chemicals available)
+  const { count: casCount, isLoading: isCasListLoading } = useCasList();
+
+  // Get count of chemicals with EffectFactor(S) available
+  // We'll check the by_column endpoint for "EffectFactor(S)" or similar
+  const { data: effectFactorData, isLoading: isEffectFactorLoading } = useQuery({
+    queryKey: ["by-column", "EffectFactor(S)"],
+    queryFn: () => apiFetch<ByColumnData>(API_ENDPOINTS.BY_COLUMN("EffectFactor(S)")),
+    enabled: !!summaryData,
+  });
+
+  // Calculate effect factors count (substances that have effect factors)
+  // The count represents the number of substances with effect factors available
+  const effectFactorsCount = effectFactorData?.count || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,30 +77,23 @@ const Index = () => {
         <div className="mb-8 max-w-4xl mx-auto">
           <div className="rounded-lg border bg-card/50 px-6 py-4">
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
-              {isSummaryLoading ? (
+              {(isSummaryLoading || isCasListLoading || isEffectFactorLoading) ? (
                 <>
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-6 w-32" />
-                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-6 w-40" />
                 </>
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Total Records:</span>
-                    <span className="font-semibold text-foreground">
-                      {summaryData?.rows?.toLocaleString() || "—"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Chemical Substances:</span>
+                    <span className="text-muted-foreground">Chemicals available:</span>
                     <span className="font-semibold text-foreground">
                       {casCount?.toLocaleString() || "—"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Data Columns:</span>
+                    <span className="text-muted-foreground">Effect factors available:</span>
                     <span className="font-semibold text-foreground">
-                      {summaryData?.columns?.toLocaleString() || "—"}
+                      {effectFactorsCount > 0 ? effectFactorsCount.toLocaleString() : "—"}
                     </span>
                   </div>
                 </>
