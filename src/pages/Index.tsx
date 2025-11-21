@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCasList } from "@/hooks/useCasList";
 
-
 const Index = () => {
   const [selectedChemical, setSelectedChemical] = useState<ChemicalMetadata>({
     cas: "50-00-0",
@@ -43,7 +42,17 @@ const Index = () => {
                 <Skeleton className="inline-block h-4 w-16 align-middle" />
               ) : (
                 <span className="font-semibold">{casCount?.toLocaleString() || "—"}</span>
-              )}
+              )}{" "}
+              out of {Number(10278).toLocaleString()} initially (
+              <a 
+                href="https://openchemfacts.gitbook.io/openchemfacts-docs/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="underline hover:text-primary transition-colors"
+              >
+                cf. Documentation
+              </a>
+              {" "}for more info about Ecotox data-treatment)
             </p>
           </div>
         </div>
