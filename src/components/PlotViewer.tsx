@@ -17,6 +17,7 @@ import {
 } from "@/lib/plotly-utils";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { isSSDData, createSSDPlotFromData, type SSDData } from "@/lib/ssd-plot-utils";
+import { isEC10eqData, createEC10eqPlotFromData, type EC10eqData } from "@/lib/ec10eq-plot-utils";
 
 interface PlotViewerProps {
   cas: string;
@@ -38,15 +39,16 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
 
   const { data: rawData, isLoading, error } = useQuery({
     queryKey: ["plot", cas, type],
-    queryFn: () => apiFetch<PlotlyData | SSDData>(endpoint),
-    // NOTE: Temporarily disable EC10EQ endpoint
-    enabled: !!cas && type !== "ec10eq",
+    queryFn: () => apiFetch<PlotlyData | SSDData | EC10eqData>(endpoint),
+    enabled: !!cas,
   });
 
-  // Convert SSD JSON data to Plotly format if needed
+  // Convert JSON data to Plotly format if needed
   const data: PlotlyData | null = rawData
     ? isSSDData(rawData)
       ? createSSDPlotFromData(rawData)
+      : isEC10eqData(rawData)
+      ? createEC10eqPlotFromData(rawData, 'trophic_group')
       : (rawData as PlotlyData)
     : null;
 

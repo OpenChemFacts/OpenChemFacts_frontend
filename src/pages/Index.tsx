@@ -87,20 +87,19 @@ const Index = () => {
               
               <EffectFactors cas={selectedChemical.cas} />
               
-              {/* NOTE: EC10 Equivalent tab temporarily disabled - endpoint /api/plot/ec10eq/ is temporarily disabled */}
               <Tabs defaultValue="ssd" className="w-full">
-                <TabsList className="grid w-full max-w-md mx-auto grid-cols-1">
+                <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
                   <TabsTrigger value="ssd">SSD Distribution</TabsTrigger>
-                  {/* <TabsTrigger value="ec10">EC10 Equivalent</TabsTrigger> */}
+                  <TabsTrigger value="ec10">EC10 Equivalent</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="ssd" className="mt-6">
                   <PlotViewer cas={selectedChemical.cas} type="ssd" />
                 </TabsContent>
                 
-                {/* <TabsContent value="ec10" className="mt-6">
+                <TabsContent value="ec10" className="mt-6">
                   <PlotViewer cas={selectedChemical.cas} type="ec10eq" />
-                </TabsContent> */}
+                </TabsContent>
               </Tabs>
             </>
           )}
