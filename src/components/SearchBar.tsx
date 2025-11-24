@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { apiFetch, ApiError } from "@/lib/api";
+import { API_ENDPOINTS } from "@/lib/config";
 import { normalizeCas, compareCas } from "@/lib/cas-utils";
 
 export interface ChemicalMetadata {
@@ -45,7 +46,7 @@ export const SearchBar = ({ onCasSelect, initialCas }: SearchBarProps) => {
       const trimmed = debouncedSearchTerm.trim();
       if (!trimmed) return null;
       
-      const endpoint = `/search?query=${encodeURIComponent(trimmed)}`;
+      const endpoint = API_ENDPOINTS.SEARCH(trimmed);
       return apiFetch<SearchResponse>(endpoint);
     },
     enabled: debouncedSearchTerm.trim().length > 0,

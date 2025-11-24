@@ -62,26 +62,11 @@ This project is built with:
 
 ## Configuration de l'API
 
-### Configuration du backend
+L'application utilise l'API OpenChemFacts disponible à `https://api.openchemfacts.com/api`.
 
-L'application utilise une seule API de production :
+**Documentation officielle de l'API** : [https://api.openchemfacts.com/docs](https://api.openchemfacts.com/docs)
 
-**Backend Production** : `https://api.openchemfacts.com/api`
-
-Toutes les requêtes API sont dirigées vers ce endpoint unique. Aucune configuration supplémentaire n'est nécessaire.
-
-### Dépannage
-
-Si vous rencontrez l'erreur "Impossible de se connecter au serveur" :
-
-1. **Vérifiez votre connexion internet** : assurez-vous d'avoir accès à `https://api.openchemfacts.com/api`
-2. **Vérifiez la configuration CORS** : le backend doit autoriser les requêtes depuis votre origine frontend
-3. **Consultez la console du navigateur** : en mode développement, des logs détaillés sont affichés
-
-Les logs de débogage en développement affichent :
-- L'URL de base de l'API utilisée (`https://api.openchemfacts.com/api`)
-- Chaque requête effectuée
-- Les erreurs détaillées en cas d'échec
+Pour toute information sur les endpoints, formats de données, ou utilisation de l'API, consultez la documentation officielle générée par le backend.
 
 ## How can I deploy this project?
 

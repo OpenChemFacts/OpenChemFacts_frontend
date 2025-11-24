@@ -43,8 +43,12 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
     enabled: !!cas,
   });
 
+  // Check if we should display a message instead of the plot
+  // This happens when SSD data has a message and no curve (single endpoint case)
+  const shouldShowMessage = rawData && isSSDData(rawData) && rawData.message && !rawData.ssd_curve;
+
   // Convert JSON data to Plotly format if needed
-  const data: PlotlyData | null = rawData
+  const data: PlotlyData | null = rawData && !shouldShowMessage
     ? isSSDData(rawData)
       ? createSSDPlotFromData(rawData)
       : isEC10eqData(rawData)
@@ -225,6 +229,28 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
         error={error} 
         title="Error loading chart"
       />
+    );
+  }
+
+  // If we should show a message instead of the plot (single endpoint case)
+  if (shouldShowMessage && rawData && isSSDData(rawData)) {
+    const message = rawData.message || 'No SSD curve available';
+    return (
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-accent" />
+            {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 sm:p-4">
+          <div className="flex items-center justify-center h-[80vh] min-h-[600px]">
+            <p className="text-2xl md:text-3xl lg:text-4xl font-semibold text-center text-muted-foreground px-4">
+              {message}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

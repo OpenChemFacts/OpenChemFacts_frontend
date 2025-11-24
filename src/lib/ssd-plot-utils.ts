@@ -292,3 +292,133 @@ export function createSSDPlotFromData(ssdData: SSDData): PlotlyData {
   };
 }
 
+/**
+ * Interface for comparison data from the API
+ */
+export interface ComparisonData {
+  comparison: SSDData[];
+}
+
+/**
+ * Check if data is comparison format
+ */
+export function isComparisonData(data: any): data is ComparisonData {
+  return (
+    data &&
+    typeof data === 'object' &&
+    'comparison' in data &&
+    Array.isArray(data.comparison) &&
+    data.comparison.length > 0 &&
+    isSSDData(data.comparison[0])
+  );
+}
+
+/**
+ * Colors for comparison plots (one per substance)
+ */
+const COMPARISON_COLORS = [
+  '#1f77b4', // Blue
+  '#ff7f0e', // Orange
+  '#2ca02c', // Green
+  '#d62728', // Red
+  '#9467bd', // Purple
+];
+
+/**
+ * Convert comparison JSON data to Plotly format
+ * Creates a plot with multiple SSD curves for comparison
+ */
+export function createComparisonPlotFromData(comparisonData: ComparisonData): PlotlyData {
+  const { comparison } = comparisonData;
+  const traces: any[] = [];
+
+  // Create a trace for each substance's SSD curve
+  comparison.forEach((ssdData, index) => {
+    const { cas_number, chemical_name, ssd_curve } = ssdData;
+    const color = COMPARISON_COLORS[index % COMPARISON_COLORS.length];
+    const displayName = chemical_name || cas_number;
+
+    if (ssd_curve && ssd_curve.concentrations_mgL && ssd_curve.affected_species_percent) {
+      traces.push({
+        x: ssd_curve.concentrations_mgL,
+        y: ssd_curve.affected_species_percent,
+        mode: 'lines',
+        name: displayName,
+        type: 'scatter',
+        line: {
+          width: 3,
+          color: color,
+        },
+        hovertemplate: `<b>${displayName}</b><br>Concentration: %{x:.2g} mg/L<br>% of species affected: %{y:.1f}%<extra></extra>`,
+      });
+    }
+  });
+
+  // Calculate axis ranges from all curves
+  let xMin = 1e-3;
+  let xMax = 1e3;
+  
+  comparison.forEach((ssdData) => {
+    if (ssdData.ssd_curve && ssdData.ssd_curve.concentrations_mgL && ssdData.ssd_curve.concentrations_mgL.length > 0) {
+      const curveMin = Math.min(...ssdData.ssd_curve.concentrations_mgL);
+      const curveMax = Math.max(...ssdData.ssd_curve.concentrations_mgL);
+      xMin = Math.min(xMin, curveMin);
+      xMax = Math.max(xMax, curveMax);
+    }
+  });
+
+  // Ensure reasonable range
+  const logMin = Math.log10(xMin) - 0.5;
+  const logMax = Math.log10(xMax) + 0.5;
+
+  // Create title
+  const substanceNames = comparison
+    .map(s => s.chemical_name || s.cas_number)
+    .join(' vs ');
+  const title = `<b>SSD Comparison</b><br>${substanceNames}`;
+
+  // Create layout
+  const layout: any = {
+    title: {
+      text: title,
+      x: 0.5,
+      xanchor: 'center',
+      font: { size: 14 },
+    },
+    xaxis: {
+      title: 'Concentration (mg/L)',
+      type: 'log',
+      range: [logMin, logMax],
+      showgrid: true,
+    },
+    yaxis: {
+      title: 'Affected species (%)',
+      range: [0, 100],
+      ticksuffix: ' %',
+      showgrid: true,
+    },
+    width: 1000,
+    height: 600,
+    template: 'plotly_white',
+    hovermode: 'closest',
+    legend: {
+      title: 'Substances',
+      orientation: 'v',
+      yanchor: 'top',
+      y: 0.98,
+      xanchor: 'left',
+      x: 0.02,
+      bgcolor: 'rgba(255,255,255,0.8)',
+      bordercolor: 'black',
+      borderwidth: 1,
+    },
+    margin: { t: 120, b: 80, l: 80, r: 60 },
+  };
+
+  return {
+    data: traces,
+    layout,
+    config: undefined,
+  };
+}
+

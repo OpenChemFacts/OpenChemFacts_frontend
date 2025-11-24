@@ -8,6 +8,7 @@ import { normalizeCas, compareCas } from "@/lib/cas-utils";
 import { API_ENDPOINTS } from "@/lib/config";
 import { apiFetch } from "@/lib/api";
 import { ErrorDisplay } from "@/components/ui/error-display";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChemicalInfoProps {
   cas: string;
@@ -138,12 +139,21 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
             <p className="text-sm text-muted-foreground mb-1">CAS Number</p>
             <p className="font-mono font-semibold text-lg">{displayCasNumber}</p>
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-muted-foreground mb-1">Name</p>
             {isLoading && !displayChemicalName ? (
               <Skeleton className="h-6 w-48" />
             ) : displayChemicalName ? (
-              <p className="font-semibold text-lg">{displayChemicalName}</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <p className="font-semibold text-lg truncate cursor-help" title={displayChemicalName}>
+                    {displayChemicalName}
+                  </p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-md">{displayChemicalName}</p>
+                </TooltipContent>
+              </Tooltip>
             ) : (
               <p className="font-semibold text-muted-foreground italic">Name not available</p>
             )}

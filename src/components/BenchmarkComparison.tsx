@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Plus, X } from "lucide-react";
+import { BarChart3, Plus, X, Play } from "lucide-react";
 import { API_ENDPOINTS } from "@/lib/config";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
-import { useCasList } from "@/hooks/useCasList";
 import { usePlotly } from "@/hooks/usePlotly";
 import { normalizeCas, compareCas } from "@/lib/cas-utils";
 import {
@@ -19,18 +18,133 @@ import {
   isDarkMode,
 } from "@/lib/plotly-utils";
 import { ErrorDisplay } from "@/components/ui/error-display";
+import { isComparisonData, createComparisonPlotFromData, type ComparisonData } from "@/lib/ssd-plot-utils";
+
+type SearchResponse = {
+  query: string;
+  count: number;
+  matches: Array<{ cas: string; name?: string }>;
+};
+
+interface CasItem {
+  cas_number: string;
+  chemical_name?: string;
+}
+
+const DEBOUNCE_DELAY = 300;
+
+const MAX_SUBSTANCES = 5;
+const MIN_SUBSTANCES = 2;
 
 export const BenchmarkComparison = () => {
   const [selectedCas, setSelectedCas] = useState<string[]>([]);
-  const [searchTerms, setSearchTerms] = useState<string[]>(["", "", ""]);
+  const [selectedCasMetadata, setSelectedCasMetadata] = useState<Map<string, string>>(new Map());
+  const [searchTerms, setSearchTerms] = useState<string[]>(["", "", "", "", ""]);
+  const [debouncedSearchTerms, setDebouncedSearchTerms] = useState<string[]>(["", "", "", "", ""]);
   const [showSuggestions, setShowSuggestions] = useState<number | null>(null);
+  const [shouldFetchPlot, setShouldFetchPlot] = useState(false);
   const plotRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(isDarkMode());
   const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Use shared hooks
-  const { casList, getChemicalName } = useCasList();
   const { plotlyLoaded, Plotly } = usePlotly();
+
+  // Debounce search terms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerms(searchTerms);
+    }, DEBOUNCE_DELAY);
+    return () => clearTimeout(timer);
+  }, [searchTerms]);
+
+  // Fetch search results for each search term (individual queries for each index)
+  const debouncedTerm0 = debouncedSearchTerms[0]?.trim() || "";
+  const debouncedTerm1 = debouncedSearchTerms[1]?.trim() || "";
+  const debouncedTerm2 = debouncedSearchTerms[2]?.trim() || "";
+  const debouncedTerm3 = debouncedSearchTerms[3]?.trim() || "";
+  const debouncedTerm4 = debouncedSearchTerms[4]?.trim() || "";
+
+  const searchQuery0 = useQuery({
+    queryKey: ["search", "benchmark-0", debouncedTerm0],
+    queryFn: async (): Promise<SearchResponse | null> => {
+      if (!debouncedTerm0) return null;
+      const endpoint = API_ENDPOINTS.SEARCH(debouncedTerm0, 10);
+      return apiFetch<SearchResponse>(endpoint);
+    },
+    enabled: debouncedTerm0.length > 0,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  const searchQuery1 = useQuery({
+    queryKey: ["search", "benchmark-1", debouncedTerm1],
+    queryFn: async (): Promise<SearchResponse | null> => {
+      if (!debouncedTerm1) return null;
+      const endpoint = API_ENDPOINTS.SEARCH(debouncedTerm1, 10);
+      return apiFetch<SearchResponse>(endpoint);
+    },
+    enabled: debouncedTerm1.length > 0,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  const searchQuery2 = useQuery({
+    queryKey: ["search", "benchmark-2", debouncedTerm2],
+    queryFn: async (): Promise<SearchResponse | null> => {
+      if (!debouncedTerm2) return null;
+      const endpoint = API_ENDPOINTS.SEARCH(debouncedTerm2, 10);
+      return apiFetch<SearchResponse>(endpoint);
+    },
+    enabled: debouncedTerm2.length > 0,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  const searchQuery3 = useQuery({
+    queryKey: ["search", "benchmark-3", debouncedTerm3],
+    queryFn: async (): Promise<SearchResponse | null> => {
+      if (!debouncedTerm3) return null;
+      const endpoint = API_ENDPOINTS.SEARCH(debouncedTerm3, 10);
+      return apiFetch<SearchResponse>(endpoint);
+    },
+    enabled: debouncedTerm3.length > 0,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  const searchQuery4 = useQuery({
+    queryKey: ["search", "benchmark-4", debouncedTerm4],
+    queryFn: async (): Promise<SearchResponse | null> => {
+      if (!debouncedTerm4) return null;
+      const endpoint = API_ENDPOINTS.SEARCH(debouncedTerm4, 10);
+      return apiFetch<SearchResponse>(endpoint);
+    },
+    enabled: debouncedTerm4.length > 0,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  // Convert search results to CasItem format
+  const searchResults: CasItem[][] = useMemo(() => {
+    const convertResults = (query: typeof searchQuery0): CasItem[] => {
+      if (!query.data?.matches || !Array.isArray(query.data.matches)) {
+        return [];
+      }
+      return query.data.matches.map((item) => ({
+        cas_number: item.cas,
+        chemical_name: item.name,
+      }));
+    };
+
+    return [
+      convertResults(searchQuery0),
+      convertResults(searchQuery1),
+      convertResults(searchQuery2),
+      convertResults(searchQuery3),
+      convertResults(searchQuery4),
+    ];
+  }, [searchQuery0.data, searchQuery1.data, searchQuery2.data, searchQuery3.data, searchQuery4.data]);
 
   // Monitor theme changes
   useEffect(() => {
@@ -54,53 +168,84 @@ export const BenchmarkComparison = () => {
     return () => observer.disconnect();
   }, [darkMode]);
 
-  // Fetch comparison plot when we have 2-3 substances selected
-  const { data: plotData, isLoading, error } = useQuery({
+  // Fetch comparison plot when user manually triggers it
+  const { data: rawPlotData, isLoading, error, refetch } = useQuery({
     queryKey: ["ssd-comparison", selectedCas],
     queryFn: async () => {
       // Normalize all CAS numbers before sending to API
       const normalizedCasList = selectedCas.map(cas => normalizeCas(cas));
       
-      if (import.meta.env.DEV) {
-        console.log("[BenchmarkComparison] Sending CAS list to API:", normalizedCasList);
-        console.log("[BenchmarkComparison] Request body:", JSON.stringify({ cas_list: normalizedCasList }));
-      }
+      console.log("[BenchmarkComparison] Sending CAS list to API:", normalizedCasList);
+      console.log("[BenchmarkComparison] Request body:", JSON.stringify({ cas_list: normalizedCasList }));
       
       try {
-        const response = await apiFetch<PlotlyData>(API_ENDPOINTS.SSD_COMPARISON, {
+        const response = await apiFetch<ComparisonData | PlotlyData>(API_ENDPOINTS.SSD_COMPARISON, {
           method: "POST",
           body: JSON.stringify({ cas_list: normalizedCasList }),
         });
         
-        if (import.meta.env.DEV) {
-          console.log("[BenchmarkComparison] API response received:", response);
+        console.log("[BenchmarkComparison] API response received:", response);
+        
+        // Validate response structure
+        if (!response) {
+          throw new Error("Empty response from API");
         }
         
-        return response;
-      } catch (apiError) {
-        if (import.meta.env.DEV) {
-          console.error("[BenchmarkComparison] API error details:", apiError);
+        // Check if it's comparison format or Plotly format
+        if (isComparisonData(response)) {
+          console.log("[BenchmarkComparison] Response is comparison format, converting to Plotly...");
+          const plotlyData = createComparisonPlotFromData(response);
+          console.log("[BenchmarkComparison] Converted to Plotly format:", plotlyData);
+          return plotlyData;
+        } else if (response && 'data' in response && 'layout' in response) {
+          console.log("[BenchmarkComparison] Response is already Plotly format");
+          return response as PlotlyData;
+        } else {
+          console.warn("[BenchmarkComparison] Unknown response format:", response);
+          throw new Error("Unknown response format from API");
         }
+      } catch (apiError: any) {
+        console.error("[BenchmarkComparison] API error details:", apiError);
+        const errorMessage = apiError?.message || apiError?.toString() || "Unknown error";
+        toast.error(`Failed to load comparison: ${errorMessage}`);
         throw apiError;
       }
     },
-    enabled: selectedCas.length >= 2 && selectedCas.length <= 3,
+    enabled: shouldFetchPlot && selectedCas.length >= MIN_SUBSTANCES && selectedCas.length <= MAX_SUBSTANCES,
     retry: false, // Don't retry on error to avoid spamming the API
   });
+
+  // Convert raw data to Plotly format if needed
+  const plotData: PlotlyData | null = rawPlotData || null;
+
+  // Reset fetch flag when substances change
+  useEffect(() => {
+    setShouldFetchPlot(false);
+  }, [selectedCas]);
 
   // Render Plotly chart
   useEffect(() => {
     if (plotData && plotRef.current && plotlyLoaded && Plotly) {
+      console.log("[BenchmarkComparison] Starting plot rendering...");
+      console.log("[BenchmarkComparison] plotData:", plotData);
+      console.log("[BenchmarkComparison] plotRef.current:", plotRef.current);
+      console.log("[BenchmarkComparison] plotlyLoaded:", plotlyLoaded);
+      console.log("[BenchmarkComparison] Plotly:", Plotly);
+      
       try {
         // Process traces: decode numpy data while preserving backend optimizations
         const processedTraces = processPlotlyTraces(plotData.data || []);
+        console.log("[BenchmarkComparison] Processed traces:", processedTraces);
         
         // Validate traces - backend should send valid data, but we check for safety
         const validTraces = validatePlotlyTraces(processedTraces);
+        console.log("[BenchmarkComparison] Valid traces:", validTraces);
         const tracesToRender = validTraces.length > 0 ? validTraces : processedTraces;
+        console.log("[BenchmarkComparison] Traces to render:", tracesToRender);
         
         // Verify that Plotly data is valid
         if (tracesToRender.length > 0 && plotData.layout) {
+          console.log("[BenchmarkComparison] Data is valid, proceeding with rendering");
           // Clean existing chart before creating a new one
           Plotly.purge(plotRef.current);
 
@@ -117,8 +262,15 @@ export const BenchmarkComparison = () => {
 
           // Ensure container is visible before rendering
           if (plotRef.current && plotRef.current.offsetWidth > 0 && plotRef.current.offsetHeight > 0) {
+            console.log("[BenchmarkComparison] Container is ready, rendering plot...");
+            console.log("[BenchmarkComparison] Container dimensions:", {
+              width: plotRef.current.offsetWidth,
+              height: plotRef.current.offsetHeight
+            });
+            
             Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig)
               .then(() => {
+                console.log("[BenchmarkComparison] Plot rendered successfully");
                 // Force a redraw after a short delay to ensure proper sizing
                 setTimeout(() => {
                   if (plotRef.current && Plotly) {
@@ -128,15 +280,27 @@ export const BenchmarkComparison = () => {
               })
               .catch((err: any) => {
                 console.error('[BenchmarkComparison] Error during Plotly.newPlot:', err);
+                toast.error(`Failed to render plot: ${err?.message || 'Unknown error'}`);
               });
           } else {
+            console.log("[BenchmarkComparison] Container not ready, waiting...");
+            console.log("[BenchmarkComparison] Container dimensions:", plotRef.current ? {
+              width: plotRef.current.offsetWidth,
+              height: plotRef.current.offsetHeight
+            } : "plotRef.current is null");
+            
             // Wait for container to be ready
             const containerCheckInterval = setInterval(() => {
               if (plotRef.current && plotRef.current.offsetWidth > 0 && plotRef.current.offsetHeight > 0) {
+                console.log("[BenchmarkComparison] Container is now ready, rendering plot...");
                 clearInterval(containerCheckInterval);
                 Plotly.newPlot(plotRef.current, tracesToRender, enhancedLayout, plotConfig)
+                  .then(() => {
+                    console.log("[BenchmarkComparison] Plot rendered successfully (delayed)");
+                  })
                   .catch((err: any) => {
-                    console.error('[BenchmarkComparison] Error during Plotly.newPlot:', err);
+                    console.error('[BenchmarkComparison] Error during Plotly.newPlot (delayed):', err);
+                    toast.error(`Failed to render plot: ${err?.message || 'Unknown error'}`);
                   });
               }
             }, 100);
@@ -144,6 +308,7 @@ export const BenchmarkComparison = () => {
             // Stop after 5 seconds
             setTimeout(() => {
               clearInterval(containerCheckInterval);
+              console.warn("[BenchmarkComparison] Container check timeout after 5 seconds");
             }, 5000);
           }
 
@@ -186,9 +351,26 @@ export const BenchmarkComparison = () => {
           };
         } else {
           console.error("[BenchmarkComparison] Invalid Plotly data structure:", plotData);
+          console.error("[BenchmarkComparison] tracesToRender.length:", tracesToRender.length);
+          console.error("[BenchmarkComparison] plotData.layout:", plotData.layout);
+          toast.error("Invalid plot data structure. Please check the console for details.");
         }
-      } catch (plotError) {
+      } catch (plotError: any) {
         console.error("[BenchmarkComparison] Error rendering Plotly chart:", plotError);
+        toast.error(`Error rendering plot: ${plotError?.message || 'Unknown error'}`);
+      }
+    } else {
+      if (!plotData) {
+        console.log("[BenchmarkComparison] No plotData available");
+      }
+      if (!plotRef.current) {
+        console.log("[BenchmarkComparison] plotRef.current is null");
+      }
+      if (!plotlyLoaded) {
+        console.log("[BenchmarkComparison] Plotly not loaded yet");
+      }
+      if (!Plotly) {
+        console.log("[BenchmarkComparison] Plotly object not available");
       }
     }
   }, [plotData, plotlyLoaded, Plotly, darkMode]);
@@ -222,35 +404,32 @@ export const BenchmarkComparison = () => {
     }
   }, [darkMode, plotData, plotlyLoaded, Plotly]);
 
-  const getFilteredSuggestions = (index: number) => {
-    const term = searchTerms[index];
-    if (!term) return [];
-    
-    const searchLower = term.toLowerCase().trim();
-    const normalizedCasSearch = normalizeCas(term).toLowerCase();
-    
-    return casList
-      .filter((item) => {
-        const normalizedCas = normalizeCas(item.cas_number).toLowerCase();
-        const normalizedName = item.chemical_name?.toLowerCase() || '';
-        const matchesTerm = 
-          normalizedCas.includes(normalizedCasSearch) ||
-          normalizedName.includes(searchLower);
-        // Check that the CAS is not already selected (with normalization)
-        const notAlreadySelected = !selectedCas.some(selected => compareCas(selected, item.cas_number));
-        return matchesTerm && notAlreadySelected;
-      })
-      .slice(0, 10);
+  const getFilteredSuggestions = (searchTermIndex: number): CasItem[] => {
+    // searchTermIndex corresponds to the index in searchTerms/debouncedSearchTerms (0-4)
+    // searchResults is indexed the same way (0-4)
+    const results = searchResults[searchTermIndex] || [];
+    // Filter out already selected CAS numbers
+    return results.filter((item) => {
+      return !selectedCas.some((selected) => compareCas(selected, item.cas_number));
+    });
   };
 
   const handleAddCas = (cas: string, name: string | undefined, index: number) => {
-    if (selectedCas.length >= 3) {
-      toast.error("Maximum 3 substances for comparison");
+    if (selectedCas.length >= MAX_SUBSTANCES) {
+      toast.error(`Maximum ${MAX_SUBSTANCES} substances for comparison`);
       return;
     }
     // Normalize CAS number before adding
     const normalizedCas = normalizeCas(cas);
     setSelectedCas([...selectedCas, normalizedCas]);
+    // Store metadata (chemical name) for display
+    if (name) {
+      setSelectedCasMetadata((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(normalizedCas, name);
+        return newMap;
+      });
+    }
     setSearchTerms((prev) => {
       const newTerms = [...prev];
       newTerms[index] = "";
@@ -261,14 +440,48 @@ export const BenchmarkComparison = () => {
 
   const handleRemoveCas = (cas: string) => {
     setSelectedCas(selectedCas.filter((c) => c !== cas));
+    setSelectedCasMetadata((prev) => {
+      const newMap = new Map(prev);
+      newMap.delete(cas);
+      return newMap;
+    });
+    setShouldFetchPlot(false);
   };
 
-  // Use the hook function to get the chemical name
+  const handleGenerateComparison = () => {
+    if (selectedCas.length < MIN_SUBSTANCES) {
+      toast.error(`Please select at least ${MIN_SUBSTANCES} substances`);
+      return;
+    }
+    if (selectedCas.length > MAX_SUBSTANCES) {
+      toast.error(`Please select at most ${MAX_SUBSTANCES} substances`);
+      return;
+    }
+    setShouldFetchPlot(true);
+    refetch();
+  };
+
+  // Get chemical name from stored metadata, search results, or return CAS
   const getChemicalNameForDisplay = (cas: string): string => {
     if (!cas) return '';
     const normalizedCas = normalizeCas(cas);
-    const name = getChemicalName(normalizedCas);
-    return name || normalizedCas;
+    
+    // First, try to find in stored metadata (for selected substances)
+    const storedName = selectedCasMetadata.get(normalizedCas);
+    if (storedName) {
+      return storedName;
+    }
+    
+    // Then, try to find in current search results
+    for (const results of searchResults) {
+      const found = results.find((item) => compareCas(item.cas_number, normalizedCas));
+      if (found?.chemical_name) {
+        return found.chemical_name;
+      }
+    }
+    
+    // If not found, return normalized CAS
+    return normalizedCas;
   };
 
   return (
@@ -279,13 +492,13 @@ export const BenchmarkComparison = () => {
           Benchmark - SSD Comparison
         </CardTitle>
         <CardDescription>
-          Compare species sensitivity distributions (SSD) between 2 or 3 substances
+          Compare species sensitivity distributions (SSD) between {MIN_SUBSTANCES} and {MAX_SUBSTANCES} substances
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Substance selection */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium">Select 2-3 substances:</h3>
+          <h3 className="text-sm font-medium">Select {MIN_SUBSTANCES}-{MAX_SUBSTANCES} substances:</h3>
           
           {/* Selected substances */}
           {selectedCas.length > 0 && (
@@ -308,9 +521,11 @@ export const BenchmarkComparison = () => {
           )}
 
           {/* Add substance inputs */}
-          {selectedCas.length < 3 && (
+          {selectedCas.length < MAX_SUBSTANCES && (
             <div className="space-y-3">
-              {[0, 1, 2].slice(0, 3 - selectedCas.length).map((index) => (
+              {Array.from({ length: MAX_SUBSTANCES }, (_, i) => i)
+                .slice(0, MAX_SUBSTANCES - selectedCas.length)
+                .map((index) => (
                 <div key={index} className="relative">
                   <div className="flex gap-2">
                     <input
@@ -370,18 +585,53 @@ export const BenchmarkComparison = () => {
           )}
         </div>
 
+        {/* Generate button */}
+        {selectedCas.length >= MIN_SUBSTANCES && selectedCas.length <= MAX_SUBSTANCES && (
+          <div className="flex justify-center">
+            <Button
+              onClick={handleGenerateComparison}
+              disabled={isLoading || !plotlyLoaded}
+              size="lg"
+              className="gap-2"
+            >
+              <Play className="h-4 w-4" />
+              {isLoading ? "Generating comparison..." : "Generate Comparison"}
+            </Button>
+          </div>
+        )}
+
         {/* Plot area */}
-        {selectedCas.length < 2 ? (
+        {selectedCas.length < MIN_SUBSTANCES ? (
           <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
             <BarChart3 className="h-12 w-12 mb-4 opacity-50" />
-            <p>Select at least 2 substances to see the comparison</p>
+            <p>Select at least {MIN_SUBSTANCES} substances to see the comparison</p>
+          </div>
+        ) : !shouldFetchPlot ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <BarChart3 className="h-12 w-12 mb-4 opacity-50" />
+            <p>Click "Generate Comparison" to load the graph</p>
           </div>
         ) : isLoading || !plotlyLoaded ? (
           <Skeleton className="h-[80vh] min-h-[600px] w-full" />
         ) : error ? (
-          <ErrorDisplay error={error} />
-        ) : (
+          <div className="space-y-4">
+            <ErrorDisplay error={error} />
+            <div className="flex justify-center">
+              <Button onClick={handleGenerateComparison} variant="outline">
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : plotData ? (
           <div ref={plotRef} className="w-full h-[80vh] min-h-[600px]" />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <BarChart3 className="h-12 w-12 mb-4 opacity-50" />
+            <p>No data available. Please try again.</p>
+            <Button onClick={handleGenerateComparison} variant="outline" className="mt-4">
+              Retry
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
