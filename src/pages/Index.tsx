@@ -32,9 +32,18 @@ const Index = () => {
     }
   }, [getChemicalName, selectedChemical.cas, selectedChemical.chemical_name]);
 
+  // Handler to reset to default CAS when logo is clicked
+  const handleLogoClick = () => {
+    const chemicalName = getChemicalName(DEFAULT_CAS);
+    setSelectedChemical({
+      cas: DEFAULT_CAS,
+      chemical_name: chemicalName || undefined,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onLogoClick={handleLogoClick} />
       
       <main className="container mx-auto px-4 py-12">
         <div className="mb-16 text-center max-w-4xl mx-auto">

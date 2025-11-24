@@ -1,8 +1,27 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
-export const Logo = () => {
+interface LogoProps {
+  onClick?: () => void;
+}
+
+export const Logo = ({ onClick }: LogoProps) => {
+  const location = useLocation();
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // If we're already on the home page and there's an onClick handler, call it
+    if (location.pathname === "/" && onClick) {
+      e.preventDefault();
+      onClick();
+    }
+    // Otherwise, let the Link handle navigation normally
+  };
+
   return (
-    <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+    <Link 
+      to="/" 
+      onClick={handleClick}
+      className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+    >
       {/* Logo SVG: Molécule + Data points */}
       <svg
         width="40"
