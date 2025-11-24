@@ -88,7 +88,7 @@ export const SearchBar = ({ onCasSelect, initialCas }: SearchBarProps) => {
     }
   }, [error]);
 
-  // Optimized filtered CAS list with memoization
+  // Optimized filtered CAS list with memorization
   const filteredCas = useMemo(() => {
     if (!debouncedSearchTerm.trim() || casList.length === 0) return [];
     

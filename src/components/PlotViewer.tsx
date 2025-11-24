@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ import {
   isDarkMode,
 } from "@/lib/plotly-utils";
 import { ErrorDisplay } from "@/components/ui/error-display";
+import { isSSDData, createSSDPlotFromData, type SSDData } from "@/lib/ssd-plot-utils";
 
 interface PlotViewerProps {
   cas: string;
@@ -35,12 +36,19 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
     ? "Species Sensitivity Distribution (SSD)" 
     : "EC10 Equivalent";
 
-  const { data, isLoading, error } = useQuery({
+  const { data: rawData, isLoading, error } = useQuery({
     queryKey: ["plot", cas, type],
-    queryFn: () => apiFetch<PlotlyData>(endpoint),
+    queryFn: () => apiFetch<PlotlyData | SSDData>(endpoint),
     // NOTE: Temporarily disable EC10EQ endpoint
     enabled: !!cas && type !== "ec10eq",
   });
+
+  // Convert SSD JSON data to Plotly format if needed
+  const data: PlotlyData | null = rawData
+    ? isSSDData(rawData)
+      ? createSSDPlotFromData(rawData)
+      : (rawData as PlotlyData)
+    : null;
 
   // Monitor theme changes
   useEffect(() => {
@@ -219,7 +227,7 @@ export const PlotViewer = ({ cas, type }: PlotViewerProps) => {
   }
 
   // If data is loaded but Plotly is not ready yet, display a skeleton
-  if ((data && !plotlyLoaded) || isLoading) {
+  if ((data && !plotlyLoaded) || isLoading || !data) {
     return (
       <Card className="shadow-card">
         <CardHeader>
