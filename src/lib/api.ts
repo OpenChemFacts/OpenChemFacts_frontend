@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "./config";
 
 /**
- * Types d'erreurs API
+ * API error types
  */
 export class ApiError extends Error {
   constructor(
@@ -54,7 +54,7 @@ function sanitizeErrorMessage(message: string): string {
 }
 
 /**
- * Fonction utilitaire pour effectuer des appels API avec gestion d'erreurs
+ * Utility function to perform API calls with error handling
  */
 export async function apiFetch<T>(
   endpoint: string,

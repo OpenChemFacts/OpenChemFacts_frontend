@@ -9,8 +9,8 @@ export interface CasItem {
 }
 
 /**
- * Format réel retourné par l'API /cas/list
- * L'API retourne directement un tableau d'objets avec cas_number et name
+ * Actual format returned by the API /cas/list
+ * The API returns directly an array of objects with cas_number and name
  */
 type CasListResponse = Array<{ cas_number: string; name?: string }>;
 
@@ -30,7 +30,7 @@ export const useCasList = () => {
   });
 
   // Convert API response (Array<{cas_number, name}>) to internal format (Array<{cas_number, chemical_name}>) 
-  // L'API utilise 'name' mais le code interne utilise 'chemical_name' pour cohérence
+  // The API uses 'name' but the internal code uses 'chemical_name' for consistency
   const casList: CasItem[] = casListResponse && Array.isArray(casListResponse)
     ? casListResponse.map((item) => ({
         cas_number: item.cas_number,

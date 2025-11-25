@@ -13,8 +13,8 @@ interface EffectFactorsProps {
 }
 
 /**
- * Structure d'un effect factor dans la réponse API
- * Format: {"Source": "nom_source", "EF": valeur_ef}
+ * Structure of an effect factor in the API response
+ * Format: {"Source": "source_name", "EF": ef_value}
  */
 interface EffectFactorItem {
   Source: string;
@@ -22,8 +22,8 @@ interface EffectFactorItem {
 }
 
 /**
- * Structure de la réponse API /cas/{cas}
- * Le champ EffectFactor(S) peut être une chaîne JSON ou un tableau
+ * Structure of the API response /cas/{cas}
+ * The EffectFactor(S) field can be a JSON string or an array
  */
 interface CasInfoResponse {
   cas_number?: string;

@@ -22,7 +22,7 @@ export const Logo = ({ onClick }: LogoProps) => {
       onClick={handleClick}
       className="flex items-center gap-3 hover:opacity-80 transition-opacity"
     >
-      {/* Logo SVG: Molécule + Data points */}
+      {/* Logo SVG: Molecule + Data points */}
       <svg
         width="40"
         height="40"

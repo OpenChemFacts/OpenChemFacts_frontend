@@ -16,12 +16,12 @@ interface ChemicalInfoProps {
 }
 
 /**
- * Format réel retourné par l'API /cas/{cas}
- * L'API utilise 'name' pour le nom chimique, pas 'chemical_name'
+ * Actual format returned by the API /cas/{cas}
+ * The API uses 'name' for the chemical name, not 'chemical_name'
  */
 interface CasInfoResponse {
   cas_number?: string;
-  name?: string; // L'API utilise 'name', pas 'chemical_name'
+  name?: string; // The API uses 'name', not 'chemical_name'
   n_species?: number;
   n_trophic_level?: number;
   n_results?: number;
@@ -68,7 +68,7 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
   // Systematically retrieve the chemical name if not already provided in props
   useEffect(() => {
     // Priority: casInfo.name (API format) > propChemicalName > casList
-    // L'API utilise 'name' mais on le convertit en 'chemical_name' pour cohérence interne
+    // The API uses 'name' but we convert it to 'chemical_name' for internal consistency
     if (casInfo?.name) {
       setChemicalName(casInfo.name);
     } else if (propChemicalName) {
@@ -121,7 +121,7 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
 
 
   // Use data from casInfo endpoint if available, otherwise fallback to basic info
-  // L'API utilise 'name' mais on le convertit pour l'affichage
+  // The API uses 'name' but we convert it for display
   const displayCasNumber = casInfo?.cas_number || normalizedCas;
   const displayChemicalName = casInfo?.name || chemicalName;
 
@@ -163,7 +163,7 @@ export const ChemicalInfo = ({ cas, chemical_name: propChemicalName }: ChemicalI
         {/* Display additional information from /api/cas/{cas} endpoint */}
         {casInfo && (() => {
           // Get all additional fields from the API response (excluding already displayed fields)
-          // L'API utilise 'name' pour le nom chimique
+          // The API uses 'name' for the chemical name
           // Exclude EffectFactor(S) fields as they are handled by EffectFactors component
           const excludedFields = ['cas_number', 'name', 'EffectFactor(S)', 'EffectFactor', 'EffectFactors', 'effect_factors', 'effectFactors'];
           const additionalFields = Object.keys(casInfo).filter(
